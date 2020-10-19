@@ -16,6 +16,7 @@ import os
 
 from typing import cast
 
+VOLUME = 0.05
 STARTING_ASTEROID_COUNT = 3
 SCALE = 0.5
 OFFSCREEN_SPACE = 300
@@ -262,7 +263,7 @@ class MyGame(arcade.Window):
 
             self.bullet_list.append(bullet_sprite)
 
-            arcade.play_sound(self.laser_sound)
+            self.laser_sound.play(VOLUME)
 
         if symbol == arcade.key.LEFT:
             self.player_sprite.change_angle = 3
@@ -309,7 +310,7 @@ class MyGame(arcade.Window):
                 enemy_sprite.size = 3
 
                 self.asteroid_list.append(enemy_sprite)
-                self.hit_sound1.play()
+                self.hit_sound1.play(VOLUME)
 
         elif asteroid.size == 3:
             for i in range(3):
@@ -330,7 +331,7 @@ class MyGame(arcade.Window):
                 enemy_sprite.size = 2
 
                 self.asteroid_list.append(enemy_sprite)
-                self.hit_sound2.play()
+                self.hit_sound2.play(VOLUME)
 
         elif asteroid.size == 2:
             for i in range(3):
@@ -351,10 +352,10 @@ class MyGame(arcade.Window):
                 enemy_sprite.size = 1
 
                 self.asteroid_list.append(enemy_sprite)
-                self.hit_sound3.play()
+                self.hit_sound3.play(VOLUME)
 
         elif asteroid.size == 1:
-            self.hit_sound4.play()
+            self.hit_sound4.play(VOLUME)
 
     def on_update(self, x):
         """ Move everything """

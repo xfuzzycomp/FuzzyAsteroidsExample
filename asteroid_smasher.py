@@ -1,20 +1,8 @@
-"""
-Asteroid Smasher
-
-Shoot space rocks in this demo program created with
-Python and the Arcade library.
-
-Artwork from http://kenney.nl
-
-If Python and Arcade are installed, this example can be run from the command line with:
-python -m arcade.examples.asteroid_smasher
-"""
 import random
 import math
 import arcade
 import os
-
-from typing import cast
+from typing import cast, Dict, Tuple, List, Any
 
 VOLUME = 0.05
 STARTING_ASTEROID_COUNT = 3
@@ -29,12 +17,19 @@ BOTTOM_LIMIT = -OFFSCREEN_SPACE
 TOP_LIMIT = SCREEN_HEIGHT + OFFSCREEN_SPACE
 
 
-class TurningSprite(arcade.Sprite):
+class BulletSprite(arcade.Sprite):
     """ Sprite that sets its angle to the direction it is traveling in. """
     def update(self):
         """ Move the sprite """
         super().update()
         self.angle = math.degrees(math.atan2(self.change_y, self.change_x))
+
+    @property
+    def state(self) -> Dict[str, Tuple[float, float]]:
+        return {
+            "position": tuple(self.position),
+            "velocity": tuple(self.velocity)
+        }
 
 
 class ShipSprite(arcade.Sprite):
@@ -59,6 +54,14 @@ class ShipSprite(arcade.Sprite):
 
         # Mark that we are respawning.
         self.respawn()
+
+    @property
+    def state(self) -> Dict[str, Tuple]:
+        return {
+            "position": tuple(self.position),
+            "velocity": tuple(self.velocity),
+            "angle": self.angle
+        }
 
     def respawn(self):
         """
@@ -127,6 +130,13 @@ class AsteroidSprite(arcade.Sprite):
         super().__init__(image_file_name, scale=scale)
         self.size = 0
 
+    @property
+    def state(self) -> Dict[str, Tuple[float, float]]:
+        return {
+            "position": tuple(self.position),
+            "velocity": tuple(self.velocity)
+        }
+
     def update(self):
         """ Move the asteroid around. """
         super().update()
@@ -140,22 +150,44 @@ class AsteroidSprite(arcade.Sprite):
             self.center_y = TOP_LIMIT
 
 
-class MyGame(arcade.Window):
-    """ Main application class. """
+class AsteroidGame(arcade.Window):
+    """
+    Main application class.
 
-    def __init__(self):
-        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+    Based on Asteroid Smasher Example provied in arcade.examples/asteroid_smasher
+
+    Shoot space rocks in this demo program created with
+    Python and the Arcade library.
+
+    Artwork from http://kenney.nl
+    """
+
+    def __init__(self, settings: Dict[str, Any] = None):
+        settings = settings if settings else {}
+
+        # Store game settings
+        self.frequency = settings.get("frequency", 60)  # Hz
+        self.real_time_multiplier = settings.get("real_time_multiplier", 1)
+        self.sound_on = settings.get("sound_on", False)  # Whether sounds should play
+        self.graphics_on = settings.get("graphics_on", True)  # Whether graphics should be on
+        self.lives = settings.get("lives", 3)  # Number of starting lives
+        self.prints = settings.get("prints", True)
+
+        if self.real_time_multiplier:
+            self.timestep = (1 / float(self.frequency + 1E-6)) / float(self.real_time_multiplier)
+        else:
+            self.timestep = float(1E-9)
+
+        super().__init__(width=SCREEN_WIDTH, height=SCREEN_HEIGHT, title=SCREEN_TITLE, update_rate=self.timestep)
 
         # Set the working directory (where we expect to find files) to the same
         # directory this .py file is in. You can leave this out of your own
         # code, but it is needed to easily run the examples using "python -m"
         # as mentioned at the top of this program.
-        file_path = os.path.dirname(os.path.abspath(__file__))
-        os.chdir(file_path)
+        self.directory = os.path.dirname(os.path.abspath(__file__))
+        os.chdir(self.directory)
 
         self.frame_count = 0
-
-        self.game_over = False
 
         # Sprite lists
         self.player_sprite_list = arcade.SpriteList()
@@ -165,8 +197,8 @@ class MyGame(arcade.Window):
 
         # Set up the player
         self.score = 0
+        self.game_over = False
         self.player_sprite = None
-        self.lives = 3
 
         # Sounds
         self.laser_sound = arcade.load_sound(":resources:sounds/hurt5.wav")
@@ -175,9 +207,18 @@ class MyGame(arcade.Window):
         self.hit_sound3 = arcade.load_sound(":resources:sounds/hit1.wav")
         self.hit_sound4 = arcade.load_sound(":resources:sounds/hit2.wav")
 
-    def start_new_game(self):
-        """ Set up the game and initialize the variables. """
+    def _play_sound(self, sound):
+        # Private sound playing function (checks stored sound_on)
+        if self.sound_on:
+            sound.play(VOLUME)
 
+    def _print_terminal(self, msg: str):
+        if self.prints:
+            print(msg)
+
+    def start_new_game(self) -> None:
+        """ Set up the game and initialize the variables. """
+        self.score = 0
         self.frame_count = 0
         self.game_over = False
 
@@ -188,7 +229,6 @@ class MyGame(arcade.Window):
         self.ship_life_list = arcade.SpriteList()
 
         # Set up the player
-        self.score = 0
         self.player_sprite = ShipSprite(":resources:images/space_shooter/playerShip1_orange.png", SCALE)
         self.player_sprite_list.append(self.player_sprite)
         self.lives = 3
@@ -222,11 +262,10 @@ class MyGame(arcade.Window):
             enemy_sprite.size = 4
             self.asteroid_list.append(enemy_sprite)
 
-    def on_draw(self):
+    def on_draw(self) -> None:
         """
         Render the screen.
         """
-
         # This command has to happen before we start drawing
         arcade.start_render()
 
@@ -243,27 +282,27 @@ class MyGame(arcade.Window):
         output = f"Asteroid Count: {len(self.asteroid_list)}"
         arcade.draw_text(output, 10, 50, arcade.color.WHITE, 13)
 
-    def on_key_press(self, symbol, modifiers):
+    def fire_bullet(self) -> None:
+        """Call to fire a bullet"""
+        bullet_sprite = BulletSprite(":resources:images/space_shooter/laserBlue01.png", SCALE)
+        bullet_sprite.guid = "Bullet"
+
+        bullet_speed = 13
+        bullet_sprite.change_y = math.cos(math.radians(self.player_sprite.angle)) * bullet_speed
+        bullet_sprite.change_x = -math.sin(math.radians(self.player_sprite.angle)) * bullet_speed
+
+        bullet_sprite.center_x = self.player_sprite.center_x
+        bullet_sprite.center_y = self.player_sprite.center_y
+        bullet_sprite.update()
+
+        self.bullet_list.append(bullet_sprite)
+        self._play_sound(self.laser_sound)
+
+    def on_key_press(self, symbol, modifiers) -> None:
         """ Called whenever a key is pressed. """
         # Shoot if the player hit the space bar and we aren't respawning.
         if not self.player_sprite.respawning and symbol == arcade.key.SPACE:
-            bullet_sprite = TurningSprite(":resources:images/space_shooter/laserBlue01.png", SCALE)
-            bullet_sprite.guid = "Bullet"
-
-            bullet_speed = 13
-            bullet_sprite.change_y = \
-                math.cos(math.radians(self.player_sprite.angle)) * bullet_speed
-            bullet_sprite.change_x = \
-                -math.sin(math.radians(self.player_sprite.angle)) \
-                * bullet_speed
-
-            bullet_sprite.center_x = self.player_sprite.center_x
-            bullet_sprite.center_y = self.player_sprite.center_y
-            bullet_sprite.update()
-
-            self.bullet_list.append(bullet_sprite)
-
-            self.laser_sound.play(VOLUME)
+            self.fire_bullet()
 
         if symbol == arcade.key.LEFT:
             self.player_sprite.change_angle = 3
@@ -274,7 +313,7 @@ class MyGame(arcade.Window):
         elif symbol == arcade.key.DOWN:
             self.player_sprite.thrust = -.2
 
-    def on_key_release(self, symbol, modifiers):
+    def on_key_release(self, symbol, modifiers) -> None:
         """ Called whenever a key is released. """
         if symbol == arcade.key.LEFT:
             self.player_sprite.change_angle = 0
@@ -285,7 +324,7 @@ class MyGame(arcade.Window):
         elif symbol == arcade.key.DOWN:
             self.player_sprite.thrust = 0
 
-    def split_asteroid(self, asteroid: AsteroidSprite):
+    def split_asteroid(self, asteroid: AsteroidSprite) -> None:
         """ Split an asteroid into chunks. """
         x = asteroid.center_x
         y = asteroid.center_y
@@ -294,8 +333,8 @@ class MyGame(arcade.Window):
         if asteroid.size == 4:
             for i in range(3):
                 image_no = random.randrange(2)
-                image_list = [":resources:images/space_shooter/meteorGrey_med1.png",
-                              ":resources:images/space_shooter/meteorGrey_med2.png"]
+                image_list = (":resources:images/space_shooter/meteorGrey_med1.png",
+                              ":resources:images/space_shooter/meteorGrey_med2.png")
 
                 enemy_sprite = AsteroidSprite(image_list[image_no],
                                               SCALE * 1.5)
@@ -310,13 +349,13 @@ class MyGame(arcade.Window):
                 enemy_sprite.size = 3
 
                 self.asteroid_list.append(enemy_sprite)
-                self.hit_sound1.play(VOLUME)
+                self._play_sound(self.hit_sound1)
 
         elif asteroid.size == 3:
             for i in range(3):
                 image_no = random.randrange(2)
-                image_list = [":resources:images/space_shooter/meteorGrey_small1.png",
-                              ":resources:images/space_shooter/meteorGrey_small2.png"]
+                image_list = (":resources:images/space_shooter/meteorGrey_small1.png",
+                              ":resources:images/space_shooter/meteorGrey_small2.png")
 
                 enemy_sprite = AsteroidSprite(image_list[image_no],
                                               SCALE * 1.5)
@@ -331,13 +370,13 @@ class MyGame(arcade.Window):
                 enemy_sprite.size = 2
 
                 self.asteroid_list.append(enemy_sprite)
-                self.hit_sound2.play(VOLUME)
+                self._play_sound(self.hit_sound2)
 
         elif asteroid.size == 2:
             for i in range(3):
                 image_no = random.randrange(2)
-                image_list = [":resources:images/space_shooter/meteorGrey_tiny1.png",
-                              ":resources:images/space_shooter/meteorGrey_tiny2.png"]
+                image_list = (":resources:images/space_shooter/meteorGrey_tiny1.png",
+                              ":resources:images/space_shooter/meteorGrey_tiny2.png")
 
                 enemy_sprite = AsteroidSprite(image_list[image_no],
                                               SCALE * 1.5)
@@ -352,14 +391,17 @@ class MyGame(arcade.Window):
                 enemy_sprite.size = 1
 
                 self.asteroid_list.append(enemy_sprite)
-                self.hit_sound3.play(VOLUME)
+                self._play_sound(self.hit_sound3)
 
         elif asteroid.size == 1:
-            self.hit_sound4.play(VOLUME)
+            self._play_sound(self.hit_sound4)
 
-    def on_update(self, x):
-        """ Move everything """
+    def on_update(self, delta_time) -> None:
+        """
+        Move everything
 
+        :param delta_time: Time since last time step
+        """
         self.frame_count += 1
 
         if not self.game_over:
@@ -395,18 +437,28 @@ class MyGame(arcade.Window):
                         self.split_asteroid(cast(AsteroidSprite, asteroids[0]))
                         asteroids[0].remove_from_sprite_lists()
                         self.ship_life_list.pop().remove_from_sprite_lists()
-                        print("Crash")
+                        self._print_terminal("Crash")
                     else:
                         self.game_over = True
-                        print("Game over")
+                        self._print_terminal("Game over")
 
+    def run_single_game(self) -> float:
+        """
+        Run a single instance of the game with the specified settings
+        :return: Score from the environment
+        """
+        self.start_new_game()
+        arcade.run()
+        return self.score
 
-def main():
-    """ Start the game """
-    window = MyGame()
-    window.start_new_game()
-    arcade.run()
+    def run(self):
+        self.start_new_game()
+        arcade.run()
 
 
 if __name__ == "__main__":
-    main()
+    """ Start the game """
+    window = AsteroidGame()
+    window.start_new_game()
+    arcade.run()
+

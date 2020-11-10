@@ -1,3 +1,14 @@
+"""
+Asteroid Smasher
+
+Shoot space rocks in this demo program created with
+Python and the Arcade library.
+
+Artwork from http://kenney.nl
+
+If Python and Arcade are installed, this example can be run from the command line with:
+python -m arcade.examples.asteroid_smasher
+"""
 import random
 import math
 import arcade
@@ -19,6 +30,18 @@ TOP_LIMIT = SCREEN_HEIGHT + OFFSCREEN_SPACE
 
 class BulletSprite(arcade.Sprite):
     """ Sprite that sets its angle to the direction it is traveling in. """
+    def __init__(self, filename, scale, starting_angle: float, starting_position: Tuple[float, float]):
+        """ Set up a bullet. """
+        # Call the parent Sprite constructor
+        super().__init__(filename, scale)
+
+        # Set the starting states
+        self.bullet_speed = 13
+        self.change_y = math.cos(math.radians(starting_angle)) * self.bullet_speed
+        self.change_x = -math.sin(math.radians(starting_angle)) * self.bullet_speed
+
+        self.center_x, self.center_y = starting_position
+
     def update(self):
         """ Move the sprite """
         super().update()
@@ -172,6 +195,7 @@ class AsteroidGame(arcade.Window):
         self.graphics_on = settings.get("graphics_on", True)  # Whether graphics should be on
         self.lives = settings.get("lives", 3)  # Number of starting lives
         self.prints = settings.get("prints", True)
+        self.allow_key_presses = settings.get("allow_key_presses", True)
 
         if self.real_time_multiplier:
             self.timestep = (1 / float(self.frequency + 1E-6)) / float(self.real_time_multiplier)
@@ -200,6 +224,10 @@ class AsteroidGame(arcade.Window):
         self.game_over = False
         self.player_sprite = None
 
+        # Track active keys (from eligible controls)
+        self.available_keys = (arcade.key.SPACE, arcade.key.LEFT, arcade.key.RIGHT, arcade.key.UP, arcade.key.DOWN)
+        self.active_key_presses = list()
+
         # Sounds
         self.laser_sound = arcade.load_sound(":resources:sounds/hurt5.wav")
         self.hit_sound1 = arcade.load_sound(":resources:sounds/explosion1.wav")
@@ -208,7 +236,7 @@ class AsteroidGame(arcade.Window):
         self.hit_sound4 = arcade.load_sound(":resources:sounds/hit2.wav")
 
     def _play_sound(self, sound):
-        # Private sound playing function (checks stored sound_on)
+        # Private sound playing function (checks stored sound_on) using globally specified volume
         if self.sound_on:
             sound.play(VOLUME)
 
@@ -231,7 +259,6 @@ class AsteroidGame(arcade.Window):
         # Set up the player
         self.player_sprite = ShipSprite(":resources:images/space_shooter/playerShip1_orange.png", SCALE)
         self.player_sprite_list.append(self.player_sprite)
-        self.lives = 3
 
         # Set up the little icons that represent the player lives.
         cur_pos = 10
@@ -284,15 +311,10 @@ class AsteroidGame(arcade.Window):
 
     def fire_bullet(self) -> None:
         """Call to fire a bullet"""
-        bullet_sprite = BulletSprite(":resources:images/space_shooter/laserBlue01.png", SCALE)
+        bullet_sprite = BulletSprite(":resources:images/space_shooter/laserBlue01.png", SCALE,
+                                     starting_angle=self.player_sprite.angle,
+                                     starting_position=(self.player_sprite.center_x, self.player_sprite.center_y))
         bullet_sprite.guid = "Bullet"
-
-        bullet_speed = 13
-        bullet_sprite.change_y = math.cos(math.radians(self.player_sprite.angle)) * bullet_speed
-        bullet_sprite.change_x = -math.sin(math.radians(self.player_sprite.angle)) * bullet_speed
-
-        bullet_sprite.center_x = self.player_sprite.center_x
-        bullet_sprite.center_y = self.player_sprite.center_y
         bullet_sprite.update()
 
         self.bullet_list.append(bullet_sprite)
@@ -300,29 +322,40 @@ class AsteroidGame(arcade.Window):
 
     def on_key_press(self, symbol, modifiers) -> None:
         """ Called whenever a key is pressed. """
-        # Shoot if the player hit the space bar and we aren't respawning.
-        if not self.player_sprite.respawning and symbol == arcade.key.SPACE:
-            self.fire_bullet()
+        if self.allow_key_presses:
+            # Track active keys
+            if symbol in self.available_keys:
+                self.active_key_presses.append(symbol)
 
-        if symbol == arcade.key.LEFT:
-            self.player_sprite.change_angle = 3
-        elif symbol == arcade.key.RIGHT:
-            self.player_sprite.change_angle = -3
-        elif symbol == arcade.key.UP:
-            self.player_sprite.thrust = 0.15
-        elif symbol == arcade.key.DOWN:
-            self.player_sprite.thrust = -.2
+            # Shoot if the player hit the space bar and we aren't respawning.
+            if not self.player_sprite.respawning and symbol == arcade.key.SPACE:
+                self.fire_bullet()
+
+            if symbol == arcade.key.LEFT:
+                self.player_sprite.change_angle = 3
+            elif symbol == arcade.key.RIGHT:
+                self.player_sprite.change_angle = -3
+            elif symbol == arcade.key.UP:
+                self.player_sprite.thrust = 0.15
+            elif symbol == arcade.key.DOWN:
+                self.player_sprite.thrust = -.2
 
     def on_key_release(self, symbol, modifiers) -> None:
         """ Called whenever a key is released. """
-        if symbol == arcade.key.LEFT:
-            self.player_sprite.change_angle = 0
-        elif symbol == arcade.key.RIGHT:
-            self.player_sprite.change_angle = 0
-        elif symbol == arcade.key.UP:
-            self.player_sprite.thrust = 0
-        elif symbol == arcade.key.DOWN:
-            self.player_sprite.thrust = 0
+        if self.allow_key_presses:
+
+            # Remove released key from active keys list
+            if symbol in self.available_keys:
+                self.active_key_presses.pop(self.active_key_presses.index(symbol))
+
+            if symbol == arcade.key.LEFT:
+                self.player_sprite.change_angle = 0
+            elif symbol == arcade.key.RIGHT:
+                self.player_sprite.change_angle = 0
+            elif symbol == arcade.key.UP:
+                self.player_sprite.thrust = 0
+            elif symbol == arcade.key.DOWN:
+                self.player_sprite.thrust = 0
 
     def split_asteroid(self, asteroid: AsteroidSprite) -> None:
         """ Split an asteroid into chunks. """
@@ -458,7 +491,11 @@ class AsteroidGame(arcade.Window):
 
 if __name__ == "__main__":
     """ Start the game """
-    window = AsteroidGame()
+    settings = {
+        "frequency": 60,
+        "sound_on": False
+    }
+    window = AsteroidGame(settings)
     window.start_new_game()
     arcade.run()
 

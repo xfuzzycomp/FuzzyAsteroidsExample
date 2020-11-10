@@ -1,22 +1,106 @@
-import random
+"""
+Asteroid Smasher
+
+Shoot space rocks in this demo program created with
+Python and the Arcade library.
+
+Artwork from http://kenney.nl
+
+If Python and Arcade are installed, this example can be run from the command line with:
+python -m arcade.examples.asteroid_smasher
+"""
+import arcade
 import time
-from asteroid_smasher import *
+from contextlib import contextmanager
+from typing import List, Any, Tuple, Dict
+
+from asteroid_smasher import AsteroidGame, ShipSprite
 
 
-class Controller:
-    def __init__(self):
-        pass
+class SpaceShip:
+    """
+    Space Ship class to be used to interact with the space ship in the environment
+    """
+    def __init__(self, sprite: ShipSprite):
+        # Instantiate the ship based on the Sprite used to represent the ship in the environment
+        self.angle = sprite.angle
+        self.change_x = sprite.change_x
+        self.change_y = sprite.change_y
+        self.center_x = sprite.center_x
+        self.center_y = sprite.center_y
+        self.respawning = sprite.respawning
+        self.max_speed = sprite.max_speed
+        self.drag = sprite.drag
 
-    def calculate_actions(self, *args, **kwargs):
-        pass
+        # Create blank outputs
+        self._change_angle = 0
+        self._thrust = 0
+        self._fire_bullet = False
+
+    @property
+    def output_space(self) -> Dict[str, Tuple[float, float]]:
+        return {
+            "change_angle": (-3.0, 3.0),
+            "thrust": (-0.2, 0.15),
+            "fire_bullet": (False, True),
+        }
+
+    @property
+    def change_angle(self) -> float:
+        return self._change_angle
+
+    @change_angle.setter
+    def change_angle(self, change_angle: float):
+        if change_angle < self.output_space["change_angle"][0]:
+            change_angle = self.output_space["change_angle"][0]
+        elif change_angle < self.output_space["change_angle"][1]:
+            change_angle = self.output_space["change_angle"][1]
+
+        self._change_angle = change_angle
+
+    @property
+    def thrust(self) -> float:
+        return self._thrust
+
+    @thrust.setter
+    def thrust(self, thrust: float):
+        if thrust < self.output_space["thrust"][0]:
+            thrust = self.output_space["thrust"][0]
+        elif thrust < self.output_space["thrust"][1]:
+            thrust = self.output_space["thrust"][1]
+
+        self._thrust = thrust
+
+    @property
+    def fire_bullet(self) -> bool:
+        return self._fire_bullet
+
+    def shoot(self):
+        self._fire_bullet = True
 
 
 class FuzzyAsteroidGame(AsteroidGame):
-    def __init__(self, settings: Dict[str, Any] = None):
+    """
+    Modified version of the Asteroid Smasher game which accepts a Fuzzy Controller
+    """
+    def __init__(self, controller=None, settings: Dict[str, Any] = None):
         settings = settings if settings else {}
+
+        # Set the controller to
+        self.controller = controller
+
+        # Check to see if user has given the fuzzy asteroid game a valid controller
+        if not controller:
+            raise ValueError("No controller object given to the FuzzyAsteroid() constructor")
+        elif not hasattr(self.controller, "actions"):
+            raise TypeError("Controller class given to FuzzyAsteroidGame doesn't have a method called"
+                            "``actions()`` which is used to control the Ship")
 
         # Call constructor of AsteroidGame to set up the environment
         super().__init__(settings=settings)
+
+        # Used to track time elapsed for checking computational performance of the controller
+        self.time_elapsed = 0
 
     @property
     def data(self) -> Dict[str, Tuple]:
@@ -29,43 +113,55 @@ class FuzzyAsteroidGame(AsteroidGame):
             "bullets": tuple(sprite.state for sprite in self.asteroid_list),
         }
 
-    @property
-    def output_space(self) -> Dict[str, Tuple[float, float]]:
-        return {
-            "change_angle": (-3.0, 3.0),
-            "thrust": (-0.2, 0.15),
-            "fire_bullet": (False, True),
-        }
-
-    def fuzzy_control(self) -> None:
+    def call_stored_controller(self) -> None:
         """
-        Perform Fuzzy Control here with
+        Call the stored controller (if it exists)
         """
-        # Available inputs
-        # data = self.data
+        if self.controller:
+            # Use the space ship class as an intermediary between the user and the environment
+            # to limit cheating/abuse of the environment
+            ship = SpaceShip(self.player_sprite)
 
-        # Available outputs
-        self.player_sprite.change_angle = 3  # Sprite turning
-        self.player_sprite.thrust = 0.0  # Sprite acceleration
-        # self.fire_bullet()  # Fire a bullet
+            # Use the defined controller
+            self.controller.actions(ship, self.data)
+
+            # Take controller actions and send them back to the environment
+            self.player_sprite.change_angle = ship.change_angle
+            self.player_sprite.thrust = ship.thrust
+
+            # Fire bullet if the user has ordered the ship to shoot
+            if ship.fire_bullet:
+                self.fire_bullet()
 
     def on_update(self, delta_time: float) -> None:
-        self.fuzzy_control()
+        if not self.active_key_presses:
+            self.call_stored_controller()
 
         # Call on_update() of AsteroidGame parent
         AsteroidGame.on_update(self, delta_time)
 
-    # def on_key_press(self, symbol, modifiers) -> None:
-    #     # Turned off to enable "on_update" AI function
-    #     pass
-    #
-    # def on_key_release(self, symbol, modifiers) -> None:
-    #     # Turned off to enable "on_update" AI function
-    #     pass
+    @contextmanager
+    def _timer_interface(self):
+        """
+        Use the function to wrap code within a timer interface (for performance debugging)
+
+        You can also use your favorite IDE's profiling tools to accomplish the same thing.
+        """
+        t0 = time.perf_counter()
+
+        try:
+            yield
+        except Exception as e:
+            # Handle exceptions raised
+            print(e, " ignored in ", self.controller.__class__, "actions() function evaluation")
+        finally:
+            t1 = time.perf_counter()
+            self.time_elapsed = t1 - t0 / float(1E6)
+            print("Time to evaluate", __class__, "actions() function", (t1 - t0) / float(1E6), "micro seconds")
 
 
-class Trainer(FuzzyAsteroidGame):
-    def __init__(self, settings: Dict[str, Any] = None):
+class TrainerEnvironment(FuzzyAsteroidGame):
+    def __init__(self, controller, settings: Dict[str, Any] = None):
         settings = settings if settings else {}
 
         # Override with desired settings for training
@@ -73,11 +169,12 @@ class Trainer(FuzzyAsteroidGame):
             "sound_on": False,
             "graphics_on": False,
             "real_time_multiplier": 0,
-            "prints": True
+            "prints": True,
+            "allow_key_presses": False
         })
 
         # Call constructor of FuzzyAsteroidGame
-        super().__init__(settings=settings)
+        super().__init__(controller, settings=settings)
 
     def on_key_press(self, symbol, modifiers) -> None:
         # Turned off during training
@@ -95,25 +192,3 @@ class Trainer(FuzzyAsteroidGame):
         output = f"Running in Training Mode"
         arcade.draw_text(output, start_x=self.get_size()[0]/2.0, start_y=self.get_size()[1]/2.0,
                          color=arcade.color.WHITE, font_size=16, align="center", anchor_x="center")
-
-
-if __name__ == "__main__":
-    # Optional settings
-    settings = {
-        # "graphics_on": True,
-        # "sound_on": True,
-        # "frequency": 60,
-        # "real_time_multiplier": 1
-    }
-
-    """ Start the game """
-    # Create a game instance
-    # window = FuzzyAsteroidGame(settings)
-    window = Trainer(settings)
-
-    # Run a single game
-    score = window.run_single_game()
-    print(score)
-
-    score = window.run_single_game()
-    print(score)

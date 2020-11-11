@@ -46,6 +46,14 @@ class SpaceShip:
         }
 
     @property
+    def position(self) -> Tuple[float, float]:
+        return self.center_x, self.center_y
+
+    @property
+    def velocity(self) -> Tuple[float, float]:
+        return self.change_x, self.change_y
+
+    @property
     def change_angle(self) -> float:
         return self._change_angle
 
@@ -74,6 +82,10 @@ class SpaceShip:
     @property
     def fire_bullet(self) -> bool:
         return self._fire_bullet
+
+    @fire_bullet.setter
+    def fire_bullet(self, fire: bool):
+        self._fire_bullet = True
 
     def shoot(self):
         self._fire_bullet = True
@@ -108,7 +120,6 @@ class FuzzyAsteroidGame(AsteroidGame):
         return {
             "frame": self.frame_count,
             "map_dimensions": self.get_size(),
-            "ship": tuple(sprite.state for sprite in self.player_sprite_list),
             "asteroids": tuple(sprite.state for sprite in self.asteroid_list),
             "bullets": tuple(sprite.state for sprite in self.asteroid_list),
         }

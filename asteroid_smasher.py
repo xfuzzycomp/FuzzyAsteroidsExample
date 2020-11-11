@@ -28,12 +28,30 @@ BOTTOM_LIMIT = -OFFSCREEN_SPACE
 TOP_LIMIT = SCREEN_HEIGHT + OFFSCREEN_SPACE
 
 
+class Score:
+    """
+    Class which is used to keep track of various scoring metrics
+    """
+    def __init__(self):
+        self.asteroids_hit = 0
+        self.bullets_fired = 0
+        self.deaths = 0
+        self.distance_travelled = 0
+
+    @property
+    def accuracy(self) -> float:
+        return 1.0 if not self.bullets_fired else self.asteroids_hit/self.bullets_fired
+
+
 class BulletSprite(arcade.Sprite):
     """ Sprite that sets its angle to the direction it is traveling in. """
-    def __init__(self, filename, scale, starting_angle: float, starting_position: Tuple[float, float]):
-        """ Set up a bullet. """
+    def __init__(self, starting_angle: float, starting_position: Tuple[float, float]):
+        """ Set up a bullet sprite. """
         # Call the parent Sprite constructor
-        super().__init__(filename, scale)
+        super().__init__(":resources:images/space_shooter/laserBlue01.png", SCALE)
+
+        # Set GUID
+        self.guid = "Bullet"
 
         # Set the starting states
         self.bullet_speed = 13
@@ -41,6 +59,9 @@ class BulletSprite(arcade.Sprite):
         self.change_x = -math.sin(math.radians(starting_angle)) * self.bullet_speed
 
         self.center_x, self.center_y = starting_position
+
+        # Update the bullet sprite
+        self.update()
 
     def update(self):
         """ Move the sprite """
@@ -61,18 +82,18 @@ class ShipSprite(arcade.Sprite):
 
     Derives from arcade.Sprite.
     """
-    def __init__(self, filename, scale):
+    def __init__(self):
         """ Set up the space ship. """
 
         # Call the parent Sprite constructor
-        super().__init__(filename, scale)
+        super().__init__(":resources:images/space_shooter/playerShip1_orange.png", SCALE)
 
         # Info on where we are going.
         # Angle comes in automatically from the parent class.
         self.thrust = 0
         self.speed = 0
         self.max_speed = 4
-        self.drag = 0.05
+        self.drag = 0.04
         self.respawning = 0
 
         # Mark that we are respawning.
@@ -107,6 +128,10 @@ class ShipSprite(arcade.Sprite):
             if self.respawning > 250:
                 self.respawning = 0
                 self.alpha = 255
+        else:
+            if self.alpha != 255:
+                self.alpha = 255
+
         if self.speed > 0:
             self.speed -= self.drag
             if self.speed < 0:
@@ -148,10 +173,44 @@ class ShipSprite(arcade.Sprite):
 
 class AsteroidSprite(arcade.Sprite):
     """ Sprite that represents an asteroid. """
+    def __init__(self, parent_asteroid=None):
+        self.size = parent_asteroid.size-1 if parent_asteroid else 4
 
-    def __init__(self, image_file_name, scale):
-        super().__init__(image_file_name, scale=scale)
-        self.size = 0
+        # Images dict for lookup/selection of sprite images
+        images = {
+            4: (":resources:images/space_shooter/meteorGrey_big1.png",
+                ":resources:images/space_shooter/meteorGrey_big2.png",
+                ":resources:images/space_shooter/meteorGrey_big3.png",
+                ":resources:images/space_shooter/meteorGrey_big4.png"),
+            3: (":resources:images/space_shooter/meteorGrey_med1.png",
+                ":resources:images/space_shooter/meteorGrey_med2.png"),
+            2: (":resources:images/space_shooter/meteorGrey_small1.png",
+                ":resources:images/space_shooter/meteorGrey_small2.png"),
+            1: (":resources:images/space_shooter/meteorGrey_tiny1.png",
+                ":resources:images/space_shooter/meteorGrey_tiny2.png")
+        }
+
+        # Call Sprite constructor
+        super().__init__(random.choice(images[self.size]), scale=SCALE*1.5)
+
+        # Set GUID
+        self.guid = "Asteroid"
+
+        # Set initial angle
+        self.change_angle = (random.random() - 0.5) * 2
+
+        # Set initial speed based off of scaling factor
+        speed_scaler = 2.0 + (4.0 - self.size) / 4.0
+        self.change_x = (random.random() * speed_scaler) - (speed_scaler / 2.0)
+        self.change_y = (random.random() * speed_scaler) - (speed_scaler / 2.0)
+
+        # Other settings for if the asteroid is based off a recently destroyed parent
+        if parent_asteroid:
+            self.center_x = parent_asteroid.center_x
+            self.center_y = parent_asteroid.center_y
+        else:
+            self.center_x = random.randrange(LEFT_LIMIT, RIGHT_LIMIT)
+            self.center_y = random.randrange(BOTTOM_LIMIT, TOP_LIMIT)
 
     @property
     def state(self) -> Dict[str, Tuple[float, float]]:
@@ -220,9 +279,11 @@ class AsteroidGame(arcade.Window):
         self.ship_life_list = arcade.SpriteList()
 
         # Set up the player
-        self.score = 0
         self.game_over = False
         self.player_sprite = None
+
+        # Evaluation analytics
+        self.score = None
 
         # Track active keys (from eligible controls)
         self.available_keys = (arcade.key.SPACE, arcade.key.LEFT, arcade.key.RIGHT, arcade.key.UP, arcade.key.DOWN)
@@ -246,7 +307,7 @@ class AsteroidGame(arcade.Window):
 
     def start_new_game(self) -> None:
         """ Set up the game and initialize the variables. """
-        self.score = 0
+        self.score = Score()
         self.frame_count = 0
         self.game_over = False
 
@@ -257,37 +318,20 @@ class AsteroidGame(arcade.Window):
         self.ship_life_list = arcade.SpriteList()
 
         # Set up the player
-        self.player_sprite = ShipSprite(":resources:images/space_shooter/playerShip1_orange.png", SCALE)
+        self.player_sprite = ShipSprite()
         self.player_sprite_list.append(self.player_sprite)
 
         # Set up the little icons that represent the player lives.
-        cur_pos = 10
+        cur_pos = 50
         for i in range(self.lives):
             life = arcade.Sprite(":resources:images/space_shooter/playerLife1_orange.png", SCALE)
             life.center_x = cur_pos + life.width
-            life.center_y = life.height
+            life.center_y = life.height + 5
             cur_pos += life.width
             self.ship_life_list.append(life)
 
         # Make the asteroids
-        image_list = (":resources:images/space_shooter/meteorGrey_big1.png",
-                      ":resources:images/space_shooter/meteorGrey_big2.png",
-                      ":resources:images/space_shooter/meteorGrey_big3.png",
-                      ":resources:images/space_shooter/meteorGrey_big4.png")
-        for i in range(STARTING_ASTEROID_COUNT):
-            image_no = random.randrange(4)
-            enemy_sprite = AsteroidSprite(image_list[image_no], SCALE)
-            enemy_sprite.guid = "Asteroid"
-
-            enemy_sprite.center_y = random.randrange(BOTTOM_LIMIT, TOP_LIMIT)
-            enemy_sprite.center_x = random.randrange(LEFT_LIMIT, RIGHT_LIMIT)
-
-            enemy_sprite.change_x = random.random() * 2 - 1
-            enemy_sprite.change_y = random.random() * 2 - 1
-
-            enemy_sprite.change_angle = (random.random() - 0.5) * 2
-            enemy_sprite.size = 4
-            self.asteroid_list.append(enemy_sprite)
+        self.asteroid_list.extend([AsteroidSprite() for i in range(STARTING_ASTEROID_COUNT)])
 
     def on_draw(self) -> None:
         """
@@ -303,19 +347,30 @@ class AsteroidGame(arcade.Window):
         self.player_sprite_list.draw()
 
         # Put the text on the screen.
-        output = f"Score: {self.score}"
+        output = f"Score: {self.score.asteroids_hit}"
+        arcade.draw_text(output, 10, 110, arcade.color.WHITE, 13)
+
+        output = f"Bullets Fired: {self.score.bullets_fired}"
+        arcade.draw_text(output, 10, 90, arcade.color.WHITE, 13)
+
+        output = f"Accuracy (%): {int(100.0 * self.score.accuracy)}"
         arcade.draw_text(output, 10, 70, arcade.color.WHITE, 13)
 
         output = f"Asteroid Count: {len(self.asteroid_list)}"
         arcade.draw_text(output, 10, 50, arcade.color.WHITE, 13)
 
+        output = f"Lives: "
+        arcade.draw_text(output, 10, 10, arcade.color.WHITE, 13)
+
     def fire_bullet(self) -> None:
         """Call to fire a bullet"""
-        bullet_sprite = BulletSprite(":resources:images/space_shooter/laserBlue01.png", SCALE,
-                                     starting_angle=self.player_sprite.angle,
+        self.score.bullets_fired += 1
+
+        # Skip past the respawning timer
+        self.player_sprite.respawning = 0
+
+        bullet_sprite = BulletSprite(starting_angle=self.player_sprite.angle,
                                      starting_position=(self.player_sprite.center_x, self.player_sprite.center_y))
-        bullet_sprite.guid = "Bullet"
-        bullet_sprite.update()
 
         self.bullet_list.append(bullet_sprite)
         self._play_sound(self.laser_sound)
@@ -328,7 +383,7 @@ class AsteroidGame(arcade.Window):
                 self.active_key_presses.append(symbol)
 
             # Shoot if the player hit the space bar and we aren't respawning.
-            if not self.player_sprite.respawning and symbol == arcade.key.SPACE:
+            if symbol == arcade.key.SPACE:
                 self.fire_bullet()
 
             if symbol == arcade.key.LEFT:
@@ -348,83 +403,30 @@ class AsteroidGame(arcade.Window):
             if symbol in self.available_keys:
                 self.active_key_presses.pop(self.active_key_presses.index(symbol))
 
-            if symbol == arcade.key.LEFT:
+            if symbol == arcade.key.LEFT and arcade.key.RIGHT not in self.active_key_presses:
                 self.player_sprite.change_angle = 0
-            elif symbol == arcade.key.RIGHT:
+            elif symbol == arcade.key.RIGHT and arcade.key.LEFT not in self.active_key_presses:
                 self.player_sprite.change_angle = 0
-            elif symbol == arcade.key.UP:
+            elif symbol == arcade.key.UP and arcade.key.DOWN not in self.active_key_presses:
                 self.player_sprite.thrust = 0
-            elif symbol == arcade.key.DOWN:
+            elif symbol == arcade.key.DOWN and arcade.key.UP not in self.active_key_presses:
                 self.player_sprite.thrust = 0
 
     def split_asteroid(self, asteroid: AsteroidSprite) -> None:
         """ Split an asteroid into chunks. """
-        x = asteroid.center_x
-        y = asteroid.center_y
-        self.score += 1
+        self.score.asteroids_hit += 1
 
         if asteroid.size == 4:
-            for i in range(3):
-                image_no = random.randrange(2)
-                image_list = (":resources:images/space_shooter/meteorGrey_med1.png",
-                              ":resources:images/space_shooter/meteorGrey_med2.png")
-
-                enemy_sprite = AsteroidSprite(image_list[image_no],
-                                              SCALE * 1.5)
-
-                enemy_sprite.center_y = y
-                enemy_sprite.center_x = x
-
-                enemy_sprite.change_x = random.random() * 2.5 - 1.25
-                enemy_sprite.change_y = random.random() * 2.5 - 1.25
-
-                enemy_sprite.change_angle = (random.random() - 0.5) * 2
-                enemy_sprite.size = 3
-
-                self.asteroid_list.append(enemy_sprite)
-                self._play_sound(self.hit_sound1)
+            self.asteroid_list.extend([AsteroidSprite(asteroid) for i in range(3)])
+            self._play_sound(self.hit_sound1)
 
         elif asteroid.size == 3:
-            for i in range(3):
-                image_no = random.randrange(2)
-                image_list = (":resources:images/space_shooter/meteorGrey_small1.png",
-                              ":resources:images/space_shooter/meteorGrey_small2.png")
-
-                enemy_sprite = AsteroidSprite(image_list[image_no],
-                                              SCALE * 1.5)
-
-                enemy_sprite.center_y = y
-                enemy_sprite.center_x = x
-
-                enemy_sprite.change_x = random.random() * 3 - 1.5
-                enemy_sprite.change_y = random.random() * 3 - 1.5
-
-                enemy_sprite.change_angle = (random.random() - 0.5) * 2
-                enemy_sprite.size = 2
-
-                self.asteroid_list.append(enemy_sprite)
-                self._play_sound(self.hit_sound2)
+            self.asteroid_list.extend([AsteroidSprite(asteroid) for i in range(3)])
+            self._play_sound(self.hit_sound2)
 
         elif asteroid.size == 2:
-            for i in range(3):
-                image_no = random.randrange(2)
-                image_list = (":resources:images/space_shooter/meteorGrey_tiny1.png",
-                              ":resources:images/space_shooter/meteorGrey_tiny2.png")
-
-                enemy_sprite = AsteroidSprite(image_list[image_no],
-                                              SCALE * 1.5)
-
-                enemy_sprite.center_y = y
-                enemy_sprite.center_x = x
-
-                enemy_sprite.change_x = random.random() * 3.5 - 1.75
-                enemy_sprite.change_y = random.random() * 3.5 - 1.75
-
-                enemy_sprite.change_angle = (random.random() - 0.5) * 2
-                enemy_sprite.size = 1
-
-                self.asteroid_list.append(enemy_sprite)
-                self._play_sound(self.hit_sound3)
+            self.asteroid_list.extend([AsteroidSprite(asteroid) for i in range(3)])
+            self._play_sound(self.hit_sound3)
 
         elif asteroid.size == 1:
             self._play_sound(self.hit_sound4)
@@ -465,6 +467,7 @@ class AsteroidGame(arcade.Window):
                 asteroids = arcade.check_for_collision_with_list(self.player_sprite, self.asteroid_list)
                 if len(asteroids) > 0:
                     if self.lives > 0:
+                        self.score.deaths += 1
                         self.lives -= 1
                         self.player_sprite.respawn()
                         self.split_asteroid(cast(AsteroidSprite, asteroids[0]))

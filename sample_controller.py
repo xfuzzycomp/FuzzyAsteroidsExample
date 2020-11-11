@@ -57,7 +57,7 @@ if __name__ == "__main__":
     window = FuzzyAsteroidGame(FuzzyController(), settings=settings)
 
     # To use the controller within the context of a training solution
-    # window = Trainer(settings)
+    # window = TrainerEnvironment(FuzzyController(), settings=settings)
 
     # Run a single game
     score = window.run_single_game()

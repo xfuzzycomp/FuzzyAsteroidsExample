@@ -1,7 +1,7 @@
-from typing import List, Tuple, Dict
+from typing import Tuple, Dict
 
-from fuzzy_controller import ControllerBase, SpaceShip
-from fuzzy_asteroid_smasher import FuzzyAsteroidGame, TrainerEnvironment
+from asteroids.fuzzy_controller import ControllerBase, SpaceShip
+from asteroids.fuzzy_asteroids import FuzzyAsteroidGame
 
 
 class FuzzyController(ControllerBase):
@@ -43,10 +43,10 @@ class FuzzyController(ControllerBase):
 if __name__ == "__main__":
     # Available settings
     settings = {
-        # "graphics_on": True,
+        # "graphics_on": False,
         # "sound_on": True,
         # "frequency": 60,
-        # "real_time_multiplier": 1
+        # "real_time_multiplier": 100,
         # "lives": 3,
         # "prints": True,
         "allow_key_presses": False
@@ -60,5 +60,8 @@ if __name__ == "__main__":
     # window = TrainerEnvironment(FuzzyController(), settings=settings)
 
     # Run a single game
-    score = window.run_single_game()
+    score = window.run_headless()
+    print(score)
+
+    score = window.run_headless()
     print(score)

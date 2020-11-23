@@ -1,6 +1,6 @@
-from typing import List, Tuple, Dict
+from typing import Tuple, Dict
 
-from fuzzy_asteroid_smasher import SpaceShip
+from asteroids.fuzzy_asteroids import SpaceShip
 
 
 class ControllerBase:

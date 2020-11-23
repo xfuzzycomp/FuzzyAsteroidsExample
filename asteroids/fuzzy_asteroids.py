@@ -14,7 +14,7 @@ import time
 from contextlib import contextmanager
 from typing import List, Any, Tuple, Dict
 
-from asteroid_smasher import AsteroidGame, ShipSprite
+from asteroids.game import AsteroidGame, ShipSprite, Score
 
 
 class SpaceShip:
@@ -118,7 +118,7 @@ class FuzzyAsteroidGame(AsteroidGame):
     def data(self) -> Dict[str, Tuple]:
         # Getting data via this "getter" method will be read-only and un-assignable
         return {
-            "frame": self.frame_count,
+            "frame": self.score.frame_count,
             "map_dimensions": self.get_size(),
             "asteroids": tuple(sprite.state for sprite in self.asteroid_list),
             "bullets": tuple(sprite.state for sprite in self.asteroid_list),
@@ -168,7 +168,14 @@ class FuzzyAsteroidGame(AsteroidGame):
         finally:
             t1 = time.perf_counter()
             self.time_elapsed = t1 - t0 / float(1E6)
-            print("Time to evaluate", __class__, "actions() function", (t1 - t0) / float(1E6), "micro seconds")
+            print("Time to evaluate", __class__, "actions() function", (t1 - t0) * float(1E6), "micro seconds")
+
+    @contextmanager
+    def evaluation_manager(self):
+        yield self
+
+    def evaluate_complexity(self):
+        pass
 
 
 class TrainerEnvironment(FuzzyAsteroidGame):

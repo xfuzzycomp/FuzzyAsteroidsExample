@@ -35,8 +35,8 @@ class FuzzyController(ControllerBase):
         :param ship: Object to use when controlling the SpaceShip
         :param input_data: Input data which describes the current state of the environment
         """
-        ship.change_angle = 0.0
-        ship.thrust = 1
+        # ship.turn_rate = 180.0
+        ship.thrust = ship.thrust_range[1]
         ship.shoot()
 
 
@@ -46,7 +46,7 @@ if __name__ == "__main__":
         # "graphics_on": False,
         # "sound_on": True,
         # "frequency": 60,
-        # "real_time_multiplier": 100,
+        "real_time_multiplier": 2,
         # "lives": 3,
         # "prints": True,
         "allow_key_presses": False
@@ -54,14 +54,15 @@ if __name__ == "__main__":
 
     """ Start the game """
     # Create a game instance
-    window = FuzzyAsteroidGame(FuzzyController(), settings=settings)
+    game = FuzzyAsteroidGame(FuzzyController(), settings=settings)
 
     # To use the controller within the context of a training solution
-    # window = TrainerEnvironment(FuzzyController(), settings=settings)
+    # game = TrainerEnvironment(FuzzyController(), settings=settings)
 
     # Run a single game
-    score = window.run_headless()
-    print(score)
+    score = game.run()
 
-    score = window.run_headless()
     print(score)
+    #
+    # score = game.run_headless()
+    # print(score)

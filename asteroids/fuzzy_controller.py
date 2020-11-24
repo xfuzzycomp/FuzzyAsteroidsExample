@@ -1,6 +1,85 @@
 from typing import Tuple, Dict
 
-from asteroids.fuzzy_asteroids import SpaceShip
+from asteroids.sprites import ShipSprite
+
+
+class SpaceShip:
+    """
+    Space Ship class to be used to interact with the space ship in the environment
+    """
+    def __init__(self, sprite: ShipSprite):
+        # Instantiate the ship based on the Sprite used to represent the ship in the environment
+        self.angle = sprite.angle
+        self.change_x = sprite.change_x
+        self.change_y = sprite.change_y
+        self.center_x = sprite.center_x
+        self.center_y = sprite.center_y
+        self.respawn_time_left = sprite.respawn_time_left
+        self.fire_wait_time = sprite.fire_wait_time
+        self.max_speed = sprite.max_speed
+        self.drag = sprite.drag
+
+        # Limitations to output_space
+        self.thrust_range = sprite.thrust_range
+        self.turn_rate_range = sprite.turn_rate_range
+
+        # Create blank outputs
+        self._turn_rate = 0.0
+        self._thrust = 0.0
+        self._fire_bullet = False
+
+    @property
+    def output_space(self) -> Dict[str, Tuple[float, float]]:
+        return {
+            "turn_rate": self.turn_rate_range,
+            "thrust": self.thrust_range,
+            "fire_bullet": (False, True),
+        }
+
+    @property
+    def position(self) -> Tuple[float, float]:
+        return self.center_x, self.center_y
+
+    @property
+    def velocity(self) -> Tuple[float, float]:
+        return self.change_x, self.change_y
+
+    @property
+    def turn_rate(self) -> float:
+        return self._turn_rate
+
+    @turn_rate.setter
+    def turn_rate(self, turn_rate: float):
+        if turn_rate < self.output_space["turn_rate"][0]:
+            turn_rate = self.output_space["turn_rate"][0]
+        elif turn_rate > self.output_space["turn_rate"][1]:
+            turn_rate = self.output_space["turn_rate"][1]
+
+        self._turn_rate = turn_rate
+
+    @property
+    def thrust(self) -> float:
+        return self._thrust
+
+    @thrust.setter
+    def thrust(self, thrust: float):
+        if thrust < self.output_space["thrust"][0]:
+            thrust = self.output_space["thrust"][0]
+        elif thrust > self.output_space["thrust"][1]:
+            thrust = self.output_space["thrust"][1]
+
+        self._thrust = thrust
+
+    @property
+    def fire_bullet(self) -> bool:
+        return self._fire_bullet
+
+    @fire_bullet.setter
+    def fire_bullet(self, fire: bool):
+        self._fire_bullet = fire
+
+    def shoot(self):
+        self._fire_bullet = True
 
 
 class ControllerBase:

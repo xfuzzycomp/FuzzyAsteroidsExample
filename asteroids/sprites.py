@@ -9,7 +9,7 @@ from asteroids.settings import *
 
 class BulletSprite(arcade.Sprite):
     """ Sprite that sets its angle to the direction it is traveling in. """
-    def __init__(self, starting_angle: float, starting_position: Tuple[float, float]):
+    def __init__(self, frequency: float, starting_angle: float, starting_position: Tuple[float, float]):
         """ Set up a bullet sprite. """
         # Call the parent Sprite constructor
         super().__init__(":resources:images/space_shooter/laserBlue01.png", SCALE)
@@ -17,10 +17,13 @@ class BulletSprite(arcade.Sprite):
         # Set GUID
         self.guid = "Bullet"
 
-        # Set the starting states
-        self.bullet_speed = 13
-        self.change_y = math.cos(math.radians(starting_angle)) * self.bullet_speed
-        self.change_x = -math.sin(math.radians(starting_angle)) * self.bullet_speed
+        # Bullet model
+        self.frequency = frequency
+        self.bullet_speed = 800
+
+        # Set the starting state
+        self.change_y = math.cos(math.radians(starting_angle)) * self.bullet_speed / self.frequency
+        self.change_x = -math.sin(math.radians(starting_angle)) * self.bullet_speed / self.frequency
         self.angle = math.degrees(math.atan2(self.change_y, self.change_x))
 
         self.center_x, self.center_y = starting_position
@@ -31,9 +34,26 @@ class BulletSprite(arcade.Sprite):
     @property
     def state(self) -> Dict[str, Tuple[float, float]]:
         return {
+            "frequency": float(self.frequency),
             "position": tuple(self.position),
-            "velocity": tuple(self.velocity)
+            "velocity": tuple(self.velocity),
+            "speed": float(self.bullet_speed),
+            "angle": float(self.angle)
         }
+
+    def on_update(self, delta_time: float = 1/60):
+        # Call position update via parent
+        super().update()
+
+        if self.center_x < LEFT_LIMIT - self.width:
+            self.remove_from_sprite_lists()
+        elif self.center_x > SCREEN_WIDTH + self.width:
+            self.remove_from_sprite_lists()
+
+        if self.center_y < BOTTOM_LIMIT - self.height:
+            self.remove_from_sprite_lists()
+        elif self.center_y > SCREEN_HEIGHT + self.height:
+            self.remove_from_sprite_lists()
 
 
 class ShipSprite(arcade.Sprite):
@@ -42,103 +62,182 @@ class ShipSprite(arcade.Sprite):
 
     Derives from arcade.Sprite.
     """
-    def __init__(self):
+    def __init__(self, frequency: float, position: Tuple[float, float]):
         """ Set up the space ship. """
 
         # Call the parent Sprite constructor
         super().__init__(":resources:images/space_shooter/playerShip1_orange.png", SCALE)
 
-        # Info on where we are going.
-        # Angle comes in automatically from the parent class.
+        # State info
+        self.frequency = frequency
         self.thrust = 0
         self.speed = 0
-        self.max_speed = 4
-        self.drag = 0.04
+        self.max_speed = 240  # Meters per second
+        self.turn_rate = 0
 
-        # Manage respawns/firing vvia timers
-        self.respawning = 0
-        self.fire_limiter = 0
+        # Limitations to controllers
+        self.thrust_range = (-480.0, 480.0)  # m/s^2
+        self.turn_rate_range = (-180.0, 180.0)  # Degrees per second
+
+        # Manage drag via timer
+        self.drag = 80.0  # m/s^2
+
+        # Manage respawns/firing via timers
+        self._respawning = 0
+        self._respawn_time = 3      # seconds
+        self._fire_limiter = 0
+        self._fire_time = 1 / 10    # seconds
 
         # Mark that we are respawning.
-        self.respawn()
+        self.respawn(position)
 
     @property
     def state(self) -> Dict[str, Tuple]:
         return {
+            "frequency": float(self.frequency),
             "position": tuple(self.position),
             "velocity": tuple(self.velocity),
-            "angle": self.angle
+            "speed": float(self.speed),
+            "angle": float(self.angle),
+            "max_speed": float(self.max_speed)
         }
 
-    def respawn(self):
+    @property
+    def respawn_time_left(self) -> float:
+        return self._respawning
+
+    @property
+    def respawn_time(self) -> float:
+        return self._respawn_time
+
+    @property
+    def can_fire(self):
+        return not self._fire_limiter
+
+    @property
+    def fire_rate(self) -> float:
+        return 1 / self._fire_time
+
+    @property
+    def fire_wait_time(self) -> float:
+        return self._fire_limiter
+
+    @property
+    def half_width(self):
+        return self.width / 2.0
+
+    @property
+    def half_height(self):
+        return self.height / 2.0
+
+    def respawn(self, map_center: Tuple[float, float]):
         """
         Called when we die and need to make a new ship.
         'respawning' is an invulnerability timer.
         """
         # If we are in the middle of respawning, this is non-zero.
-        self.respawning = 1
-        self.center_x = SCREEN_WIDTH / 2
-        self.center_y = SCREEN_HEIGHT / 2
+        self._respawning = self._respawn_time
+        self.center_x, self.center_y = map_center
         self.speed = 0
         self.angle = 0
 
-    def update(self):
+    def fire_bullet(self) -> BulletSprite:
+        # Fire a bullet, starting at this sprite's position/angle
+        self._fire_limiter = self._fire_time
+
+        return BulletSprite(frequency=self.frequency,
+                            starting_angle=self.angle,
+                            starting_position=(self.center_x, self.center_y))
+
+    def on_update(self, delta_time: float = 1/60):
         """
         Update our position and other particulars.
         """
-        if self.respawning:
-            self.respawning += 1
-            self.alpha = self.respawning
-            if self.respawning > 250:
-                self.respawning = 0
-                self.alpha = 255
-        else:
-            if self.alpha != 255:
-                self.alpha = 255
+        # Call position update via parent
+        super().update()
 
+        # Handle respawning
+        if self._respawning:
+            self._respawning -= (1/self.frequency)
+
+        if self._respawning <= 0.0:
+            self._respawning = 0
+            self.alpha = 255
+        else:
+            self.alpha = 255 * (1 - self._respawning/self._respawn_time)
+
+        if self._fire_limiter <= 0.0:
+            self._fire_limiter = 0.0
+        else:
+            self._fire_limiter -= (1/self.frequency)
+
+        # Apply drag
         if self.speed > 0:
-            self.speed -= self.drag
+            self.speed -= self.drag / self.frequency
             if self.speed < 0:
                 self.speed = 0
 
-        if self.speed < 0:
-            self.speed += self.drag
+        elif self.speed < 0:
+            self.speed += self.drag / self.frequency
             if self.speed > 0:
                 self.speed = 0
 
-        self.speed += self.thrust
+        # Apply thrust to speed
+        self.speed += self.thrust / self.frequency
+
+        # Bounds check the speed
         if self.speed > self.max_speed:
             self.speed = self.max_speed
-        if self.speed < -self.max_speed:
+        elif self.speed < -self.max_speed:
             self.speed = -self.max_speed
 
-        self.change_x = -math.sin(math.radians(self.angle)) * self.speed
-        self.change_y = math.cos(math.radians(self.angle)) * self.speed
+        # Update the angle based on turning rate
+        self.angle += self.turn_rate / self.frequency
 
-        self.center_x += self.change_x
-        self.center_y += self.change_y
+        # Use speed magnitude to get velocity vector
+        self.change_x = -math.sin(math.radians(self.angle)) * self.speed / self.frequency
+        self.change_y = math.cos(math.radians(self.angle)) * self.speed / self.frequency
+
+        # Update the position based off the speed
+        self.center_x += self.change_x / self.frequency
+        self.center_y += self.change_y / self.frequency
 
         # If the ship goes off-screen, move it to the other side of the window
         if self.right < 0:
             self.left = SCREEN_WIDTH
 
-        if self.left > SCREEN_WIDTH:
+        elif self.left > SCREEN_WIDTH:
             self.right = 0
 
-        if self.bottom < 0:
+        if self.bottom < BOTTOM_LIMIT:
             self.top = SCREEN_HEIGHT
 
-        if self.top > SCREEN_HEIGHT:
-            self.bottom = 0
-
-        """ Call the parent class. """
-        super().update()
+        elif self.top > SCREEN_HEIGHT:
+            self.bottom = BOTTOM_LIMIT
 
 
 class AsteroidSprite(arcade.Sprite):
     """ Sprite that represents an asteroid. """
-    def __init__(self, parent_asteroid=None):
-        self.size = parent_asteroid.size-1 if parent_asteroid else 4
+    def __init__(self, frequency: float, parent_asteroid=None, position: Tuple[float, float] = None,
+                 speed: float = None, angle: float = None, size: float = None):
+        """
+        Constructor for Asteroid Sprite
+
+        :param parent_asteroid: Optional AsteroidSprite which this AsteroidSprite spawns from
+        :param position:  Optional Starting poisition (x, y) position
+        :param speed: Optional Starting Speed
+        :param angle: Optional Starting heading angle (degrees)
+        :param size: Optional Starting size (1 to 4 inclusive)
+        """
+        if size:
+            if 1 <= size <= 4:
+                self.size = size
+            else:
+                raise ValueError("AsteroidSize can only be between 1 and 4")
+        elif parent_asteroid:
+            self.size = parent_asteroid.size - 1
+        else:
+            self.size =4
 
         # Images dict for lookup/selection of sprite images
         images = {
@@ -160,37 +259,57 @@ class AsteroidSprite(arcade.Sprite):
         # Set GUID
         self.guid = "Asteroid"
 
-        # Set initial angle
-        self.change_angle = (random.random() - 0.5) * 2
+        # Set random rotation angle for spinning
+        self.frequency = frequency
+        self.change_angle = (random.random() - 0.5) * 120 / self.frequency
 
         # Set initial speed based off of scaling factor
         speed_scaler = 2.0 + (4.0 - self.size) / 4.0
-        self.change_x = (random.random() * speed_scaler) - (speed_scaler / 2.0)
-        self.change_y = (random.random() * speed_scaler) - (speed_scaler / 2.0)
+        self.max_speed = 60.0 * speed_scaler
 
-        # Other settings for if the asteroid is based off a recently destroyed parent
-        if parent_asteroid:
-            self.center_x = parent_asteroid.center_x
-            self.center_y = parent_asteroid.center_y
-        else:
-            self.center_x = random.randrange(LEFT_LIMIT, RIGHT_LIMIT)
-            self.center_y = random.randrange(BOTTOM_LIMIT, TOP_LIMIT)
+        # Use options angle and speed arguments
+        starting_angle = angle if angle else random.random()*360.0 - 180.0
+        starting_speed = speed if speed else random.random()*self.max_speed - self.max_speed/2.0
+
+        # Set constant starting velocity based on starting angle and speed
+        self.change_x = starting_speed * math.cos(math.radians(starting_angle)) / self.frequency
+        self.change_y = starting_speed * math.sin(math.radians(starting_angle)) / self.frequency
+
+        # Use parent position as starting point if this asteroid is starting form a parent
+        # Otherwise use the position given
+        self.center_x, self.center_y = parent_asteroid.position if parent_asteroid else position
 
     @property
     def state(self) -> Dict[str, Tuple[float, float]]:
         return {
+            "frequency": float(self.frequency),
             "position": tuple(self.position),
-            "velocity": tuple(self.velocity)
+            "velocity": tuple(self.velocity),
+            "size": int(self.size),
+            "angle": float(self.angle)
         }
 
-    def update(self):
+    @property
+    def half_width(self):
+        return self.width / 2.0
+
+    @property
+    def half_height(self):
+        return self.height / 2.0
+
+    def on_update(self, delta_time: float = 1/60):
         """ Move the asteroid around. """
+        # Call position update via parent
         super().update()
-        if self.center_x < LEFT_LIMIT:
-            self.center_x = RIGHT_LIMIT
-        if self.center_x > RIGHT_LIMIT:
-            self.center_x = LEFT_LIMIT
-        if self.center_y > TOP_LIMIT:
-            self.center_y = BOTTOM_LIMIT
-        if self.center_y < BOTTOM_LIMIT:
-            self.center_y = TOP_LIMIT
+
+        # Check right/left bounds
+        if self.center_x < LEFT_LIMIT - self.half_width:
+            self.center_x = RIGHT_LIMIT + self.half_width
+        elif self.center_x > RIGHT_LIMIT + self.half_width:
+            self.center_x = LEFT_LIMIT - self.half_width
+
+        # Check top bottom bounds
+        if self.center_y > TOP_LIMIT + self.half_height:
+            self.center_y = BOTTOM_LIMIT - self.half_height
+        elif self.center_y < BOTTOM_LIMIT - self.half_height:
+            self.center_y = TOP_LIMIT + self.half_height

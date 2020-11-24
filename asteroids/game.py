@@ -11,6 +11,8 @@ python -m arcade.examples.asteroids
 """
 import arcade
 import os
+import sys
+import random
 from typing import cast, Dict, Tuple, List, Any
 
 from asteroids.sprites import AsteroidSprite, BulletSprite, ShipSprite
@@ -29,13 +31,16 @@ class AsteroidGame(arcade.Window):
 
     Artwork from http://kenney.nl
     """
-    def __init__(self, settings: Dict[str, Any] = None, game_map: Map = None):
+    def __init__(self, settings: Dict[str, Any] = None, game_map: Map = None, scenario: Scenario=None):
         settings = settings if settings else {}
 
         # Map
         self.game_map = game_map if game_map else Map()
 
-        # Store game settings
+        # Store scenario
+        self.scenario = scenario if scenario else Scenario(num_asteroids=3)
+
+        # Store game settingsf
         self.frequency = settings.get("frequency", 60)  # Hz
         self.real_time_multiplier = settings.get("real_time_multiplier", 1)
         self.sound_on = settings.get("sound_on", False)  # Whether sounds should play
@@ -49,6 +54,8 @@ class AsteroidGame(arcade.Window):
         else:
             self.timestep = float(1E-9)
 
+        print(self.timestep)
+
         super().__init__(width=SCREEN_WIDTH,
                          height=SCREEN_HEIGHT,
                          title=SCREEN_TITLE, update_rate=self.timestep)
@@ -58,13 +65,12 @@ class AsteroidGame(arcade.Window):
         # code, but it is needed to easily run the examples using "python -m"
         # as mentioned at the top of this program.
         self.directory = os.path.dirname(os.path.abspath(__file__))
-        os.chdir(self.directory)
 
         # Sprite lists
-        self.player_sprite_list = arcade.SpriteList()
-        self.asteroid_list = arcade.SpriteList()
-        self.bullet_list = arcade.SpriteList()
-        self.ship_life_list = arcade.SpriteList()
+        self.player_sprite_list = None
+        self.asteroid_list = None
+        self.bullet_list = None
+        self.ship_life_list = None
 
         # Set up the game instance
         self.game_over = None
@@ -78,7 +84,7 @@ class AsteroidGame(arcade.Window):
         self.available_keys = (arcade.key.SPACE, arcade.key.LEFT, arcade.key.RIGHT, arcade.key.UP, arcade.key.DOWN)
         self.active_key_presses = list()
 
-        # Sounds
+        # Register sounds within the game
         self.laser_sound = arcade.load_sound(":resources:sounds/hurt5.wav")
         self.hit_sound1 = arcade.load_sound(":resources:sounds/explosion1.wav")
         self.hit_sound2 = arcade.load_sound(":resources:sounds/explosion2.wav")
@@ -94,10 +100,13 @@ class AsteroidGame(arcade.Window):
         if self.prints:
             print(msg)
 
-    def start_new_game(self) -> None:
+    def start_new_game(self, *args, **kwargs) -> None:
         """ Set up the game and initialize the variables. """
+        # Instantiate blank score
         self.score = Score()
+        self.score.max_asteroids = self.scenario.max_asteroids
 
+        # Set trackers used for game over checks
         self.life_count = self.lives
         self.game_over = False
 
@@ -108,7 +117,7 @@ class AsteroidGame(arcade.Window):
         self.ship_life_list = arcade.SpriteList()
 
         # Set up the player
-        self.player_sprite = ShipSprite()
+        self.player_sprite = ShipSprite(self.frequency, self.game_map.center)
         self.player_sprite_list.append(self.player_sprite)
 
         # Set up the little icons that represent the player lives.
@@ -120,8 +129,9 @@ class AsteroidGame(arcade.Window):
             cur_pos += life.width
             self.ship_life_list.append(life)
 
-        # Make the asteroids
-        self.asteroid_list.extend([AsteroidSprite() for i in range(STARTING_ASTEROID_COUNT)])
+        # Get the asteroids from the Scenario (which builds them based ont he Scenario settings)
+        print("frequency here", self.frequency)
+        self.asteroid_list.extend(self.scenario.asteroids(self.frequency))
 
     def on_draw(self) -> None:
         """
@@ -154,16 +164,16 @@ class AsteroidGame(arcade.Window):
 
     def fire_bullet(self) -> None:
         """Call to fire a bullet"""
-        self.score.bullets_fired += 1
 
-        # Skip past the respawning timer
-        self.player_sprite.respawning = 0
+        # Check to see if the ship is allowed to fire based on its built in rate limiter
+        if self.player_sprite.can_fire:
+            self.score.bullets_fired += 1
 
-        bullet_sprite = BulletSprite(starting_angle=self.player_sprite.angle,
-                                     starting_position=(self.player_sprite.center_x, self.player_sprite.center_y))
+            # Skip past the respawning timer
+            self.player_sprite.respawning = 0
 
-        self.bullet_list.append(bullet_sprite)
-        self._play_sound(self.laser_sound)
+            self.bullet_list.append(self.player_sprite.fire_bullet())
+            self._play_sound(self.laser_sound)
 
     def on_key_press(self, symbol, modifiers) -> None:
         """ Called whenever a key is pressed. """
@@ -177,13 +187,15 @@ class AsteroidGame(arcade.Window):
                 self.fire_bullet()
 
             if symbol == arcade.key.LEFT:
-                self.player_sprite.change_angle = 3
+                self.player_sprite.change_angle = self.player_sprite.turn_rate_range[1] / self.frequency
             elif symbol == arcade.key.RIGHT:
-                self.player_sprite.change_angle = -3
-            elif symbol == arcade.key.UP:
-                self.player_sprite.thrust = 0.15
+                self.player_sprite.change_angle = self.player_sprite.turn_rate_range[0] / self.frequency
+
+            if symbol == arcade.key.UP:
+                self.player_sprite.thrust = self.player_sprite.thrust_range[1]
+                print(self.player_sprite.thrust)
             elif symbol == arcade.key.DOWN:
-                self.player_sprite.thrust = -.2
+                self.player_sprite.thrust = self.player_sprite.thrust_range[0]
 
     def on_key_release(self, symbol, modifiers) -> None:
         """ Called whenever a key is released. """
@@ -204,76 +216,112 @@ class AsteroidGame(arcade.Window):
 
     def split_asteroid(self, asteroid: AsteroidSprite) -> None:
         """ Split an asteroid into chunks. """
+        # Add to score
         self.score.asteroids_hit += 1
 
         if asteroid.size == 4:
-            self.asteroid_list.extend([AsteroidSprite(asteroid) for i in range(3)])
+            self.asteroid_list.extend([AsteroidSprite(frequency=self.frequency, parent_asteroid=asteroid) for i in range(3)])
             self._play_sound(self.hit_sound1)
 
         elif asteroid.size == 3:
-            self.asteroid_list.extend([AsteroidSprite(asteroid) for i in range(3)])
+            self.asteroid_list.extend([AsteroidSprite(frequency=self.frequency, parent_asteroid=asteroid) for i in range(3)])
             self._play_sound(self.hit_sound2)
 
         elif asteroid.size == 2:
-            self.asteroid_list.extend([AsteroidSprite(asteroid) for i in range(3)])
+            self.asteroid_list.extend([AsteroidSprite(frequency=self.frequency, parent_asteroid=asteroid) for i in range(3)])
             self._play_sound(self.hit_sound3)
 
         elif asteroid.size == 1:
             self._play_sound(self.hit_sound4)
 
-    def on_update(self, delta_time) -> None:
+        # Remove asteroid from sprites
+        asteroid.remove_from_sprite_lists()
+
+    def on_update(self, delta_time: float = 1/60) -> None:
         """
         Move everything
 
         :param delta_time: Time since last time step
         """
+        # print("on_update() game, delta time", delta_time)
+        # self.fire_bullet()
+
         self.score.frame_count += 1
 
         # Check to see if there any asteroids left
         self.game_over = self.game_over or len(self.asteroid_list) == 0
 
+        # Check if the game is over
         if not self.game_over:
-            self.asteroid_list.update()
-            self.bullet_list.update()
-            self.player_sprite_list.update()
+            # Update all sprites
+            self.asteroid_list.on_update(delta_time)
+            self.bullet_list.on_update(delta_time)
+            self.player_sprite_list.on_update(delta_time)
 
+            # Check for collisions between bullets and asteroids
             for bullet in self.bullet_list:
                 asteroids = arcade.check_for_collision_with_list(bullet, self.asteroid_list)
 
+                # Break up and remove asteroids if there are bullet-asteroid collisions
                 for asteroid in asteroids:
                     self.split_asteroid(cast(AsteroidSprite, asteroid))  # expected AsteroidSprite, got Sprite instead
-                    asteroid.remove_from_sprite_lists()
                     bullet.remove_from_sprite_lists()
 
-                # Remove bullet if it goes off-screen
-                size = max(bullet.width, bullet.height)
-                if bullet.center_x < 0 - size:
-                    bullet.remove_from_sprite_lists()
-                if bullet.center_x > SCREEN_WIDTH + size:
-                    bullet.remove_from_sprite_lists()
-                if bullet.center_y < 0 - size:
-                    bullet.remove_from_sprite_lists()
-                if bullet.center_y > SCREEN_HEIGHT + size:
-                    bullet.remove_from_sprite_lists()
+            # Perform checks on the player sprite if it is not respawning
+            if not self.player_sprite.respawn_time_left:
 
-            if not self.player_sprite.respawning:
+                self.score.distance_travelled += (self.player_sprite.change_x**2+ self.player_sprite.change_y**2)**0.5 # meters
+
+                # Check for collisions with the asteroids (returns collisions)
                 asteroids = arcade.check_for_collision_with_list(self.player_sprite, self.asteroid_list)
+
+                # Check if there are ship-asteroid collisions detected
                 if len(asteroids) > 0:
                     if self.life_count > 0:
                         self.score.deaths += 1
                         self.life_count -= 1
-                        self.player_sprite.respawn()
+                        self.player_sprite.respawn(self.game_map.center)
                         self.split_asteroid(cast(AsteroidSprite, asteroids[0]))
-                        asteroids[0].remove_from_sprite_lists()
                         self.ship_life_list.pop().remove_from_sprite_lists()
                         self._print_terminal("Crash")
                     else:
                         self.game_over = True
                         self._print_terminal("Game over")
+                        self.score.max_distance = self.score.frame_count * self.player_sprite.max_speed
 
-    def run_headless(self, *args, **kwargs) -> Score:
+    def enable_consistent_randomness(self, seed: int = 0) -> None:
         """
-        Run a single instance of the game with without graphics
+        Call this before environment evaluation to seed the random number generator to provide consistent results
+
+        See [Python ``random`` docs] (https://docs.python.org/3/library/random.html) to learn more
+
+        :param seed: Integer seed value
+        :return:
+        """
+        random.seed(seed)
+
+    def run_single_game(self, *args, **kwargs) -> Score:
+        """
+        Run a single instance of the game.
+
+        Note: This is the recommended function to use to run the game without graphics
+
+        :return: Score from the environment
+        """
+        self.start_new_game()
+        self.on_draw()
+
+        while not self.game_over:
+            self.on_update(1 / self.frequency)
+
+        return self.score
+
+    def run_no_graphics(self, *args, **kwargs) -> Score:
+        """
+        Run a single instance of the game.
+
+        Note: This is the recommended function to use to run the game without graphics
+
         :return: Score from the environment
         """
         self.start_new_game()
@@ -283,18 +331,25 @@ class AsteroidGame(arcade.Window):
 
         return self.score
 
-    def run(self):
+    def run(self) -> None:
+        """
+        Run a "blocking" version of the game which does not close upon completion.
+
+        Note: This is the recommended way to run the game with graphics on.
+        :return:
+        """
         self.start_new_game()
+        self.center_window()
         arcade.run()
 
 
 if __name__ == "__main__":
     """ Start the game """
     settings = {
-        "frequency": 60,
+        "frequency": 10,
         "sound_on": False
     }
-    window = AsteroidGame(settings)
-    window.start_new_game()
-    arcade.run()
+    window = AsteroidGame(settings, scenario=Scenario(num_asteroids=3))
+    window.run()
+    # window.run_single_game()
 

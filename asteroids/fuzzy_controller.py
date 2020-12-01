@@ -5,7 +5,10 @@ from asteroids.sprites import ShipSprite
 
 class SpaceShip:
     """
-    Space Ship class to be used to interact with the space ship in the environment
+    Space Ship class to be used to interact with the ShipSprite in the environment
+
+    At each time step the user's controller class will receive a SpaceShip object which limits the amount of
+    information/controls the user can access. This SpaceShip class is built directly from the sprite
     """
     def __init__(self, sprite: ShipSprite):
         # Instantiate the ship based on the Sprite used to represent the ship in the environment

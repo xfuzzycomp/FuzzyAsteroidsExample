@@ -139,7 +139,7 @@ class TrainerEnvironment(FuzzyAsteroidGame):
                          color=arcade.color.WHITE, font_size=16, align="center", anchor_x="center")
 
 
-def evaluate_controller(controller: ControllerBase, settings: Dict[str, Any]) -> Score:
+def evaluate_controller(controller: ControllerBase, settings: Dict[str, Any], scenario: Scenario) -> Score:
     """
     Call the environment with the specified controller/settings
 
@@ -148,9 +148,9 @@ def evaluate_controller(controller: ControllerBase, settings: Dict[str, Any]) ->
     :return: Score object
     """
     # Create game instance based on controller and settings
-    game = FuzzyAsteroidGame(controller=controller, settings=settings)
+    game = FuzzyAsteroidGame(controller=controller, settings=settings, scenario=scenario)
 
     # Run single game at specified settings
-    score = game.run_headless()
+    score = game.run_single_game()
 
     return score

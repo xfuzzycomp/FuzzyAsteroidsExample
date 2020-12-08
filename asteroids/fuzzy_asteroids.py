@@ -114,7 +114,7 @@ class TrainerEnvironment(FuzzyAsteroidGame):
             "sound_on": False,
             "graphics_on": False,
             "real_time_multiplier": 0,
-            "prints": True,
+            "prints": False,
             "allow_key_presses": False
         })
 
@@ -145,12 +145,19 @@ def evaluate_controller(controller: ControllerBase, settings: Dict[str, Any], sc
 
     :param controller: Class that inherits from ``ControllerBase``
     :param settings: Dictionary of settings
-    :return: Score object
+    :param scenario: Scenario which defines the environment starting state
+    :return: Score object which tracked the controller's performance in the scenario
     """
-    # Create game instance based on controller and settings
-    game = FuzzyAsteroidGame(controller=controller, settings=settings, scenario=scenario)
+    return FuzzyAsteroidGame(controller=controller, settings=settings, scenario=scenario).run_single_game()
 
-    # Run single game at specified settings
-    score = game.run_single_game()
 
-    return score
+def evaluate_portfolio_headless(controller: ControllerBase, portfolio: List[Scenario]) -> List[Score]:
+    """
+    Simple function to evaluate a controller against a portfolio in ''headless'' mode which is meant to
+    be used for training.
+
+    :param controller: Class which inherits from ``ControllerBase`` and
+    :param portfolio: List of Scenarios which represents various environment states to evaluate over
+    :return: List of Score objects which tracked the controller's performance of the portfolio
+    """
+    return [TrainerEnvironment(controller=controller, scenario=scenario).run_single_game() for scenario in portfolio]

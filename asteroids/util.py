@@ -126,7 +126,6 @@ class Scenario:
         :return: List of ShipSprites
         """
         asteroids = list()
-        print("asteroid frequency", frequency)
 
         for asteroid_state in self.asteroid_states:
             if asteroid_state:

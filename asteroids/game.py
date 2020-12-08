@@ -54,8 +54,6 @@ class AsteroidGame(arcade.Window):
         else:
             self.timestep = float(1E-9)
 
-        print(self.timestep)
-
         super().__init__(width=SCREEN_WIDTH,
                          height=SCREEN_HEIGHT,
                          title=SCREEN_TITLE, update_rate=self.timestep)
@@ -130,7 +128,6 @@ class AsteroidGame(arcade.Window):
             self.ship_life_list.append(life)
 
         # Get the asteroids from the Scenario (which builds them based ont he Scenario settings)
-        print("frequency here", self.frequency)
         self.asteroid_list.extend(self.scenario.asteroids(self.frequency))
 
     def on_draw(self) -> None:
@@ -309,7 +306,9 @@ class AsteroidGame(arcade.Window):
         :return: Score from the environment
         """
         self.start_new_game()
-        self.on_draw()
+
+        if self.graphics_on:
+            self.on_draw()
 
         while not self.game_over:
             self.on_update(1 / self.frequency)

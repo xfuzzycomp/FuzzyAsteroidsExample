@@ -237,7 +237,7 @@ settings = {
     # "graphics_on": False,
     # "sound_on": True,
     # "frequency": 60,
-    "real_time_multiplier": 2,
+    # "real_time_multiplier": 2,
     "lives": 1,
     # "prints": True,
     "allow_key_presses": False
@@ -258,9 +258,9 @@ creator.create("Individual", list, fitness=creator.FitnessMax)
 IND_SIZE = 54
 
 toolbox = base.Toolbox()
-toolbox.register("attr_int", random.random)
+toolbox.register("attr_float", random.random)
 toolbox.register("individual", tools.initRepeat, creator.Individual,
-                 toolbox.attr_int, n=IND_SIZE)
+                 toolbox.attr_float, n=IND_SIZE)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 def evaluate(individual):
@@ -268,10 +268,12 @@ def evaluate(individual):
     game = TrainerEnvironment(FuzzyController(individual), settings=settings)
 
     # Run a single game
-    score = game.run()
+    score = game.run_no_graphics()
     accuracy = score.accuracy
     asteroids_hit = score.asteroids_hit
-    return(accuracy * asteroids_hit)
+    final_measure = accuracy * asteroids_hit
+    print('Fitness: ', final_measure)
+    return(final_measure),
 
 toolbox.register("mate", tools.cxTwoPoint)
 toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1, indpb=0.1)
@@ -282,14 +284,14 @@ toolbox.register("evaluate", evaluate)
 
 def main():
     pop = toolbox.population(n=5)
-    CXPB, MUTPB, NGEN = 0.5, 0.2, 40
+    CXPB, MUTPB, NGEN = 0.5, 0.2, 4
 
     # Evaluate the entire population
     fitnesses = map(toolbox.evaluate, pop)
     for ind, fit in zip(pop, fitnesses):
         ind.fitness.values = fit
         
-    print('here3')
+    print('Finished Initialization')
     for g in range(NGEN):
         print("-- Generation %i --" % g)
         # Select the next generation individuals
@@ -334,7 +336,7 @@ def main():
     return pop
 
 if __name__ == "__main__":
-    print('here2')
     ga_run = main()
+    print(ga_run)
 
 

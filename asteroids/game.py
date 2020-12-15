@@ -56,7 +56,7 @@ class AsteroidGame(arcade.Window):
 
         super().__init__(width=SCREEN_WIDTH,
                          height=SCREEN_HEIGHT,
-                         title=SCREEN_TITLE, update_rate=self.timestep)
+                         title=SCREEN_TITLE, update_rate=self.timestep, visible=False)
 
         # Set the working directory (where we expect to find files) to the same
         # directory this .py file is in. You can leave this out of your own

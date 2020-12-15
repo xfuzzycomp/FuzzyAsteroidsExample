@@ -53,8 +53,6 @@ class FuzzyController(ControllerBase):
         #Asteroid_Angle_from_plane.view()
         
         
-
-        
         
         # ################### Asteroid Direction of Movement ############################
         # self.Asteroid_Direction_of_Movement = ctrl.Antecedent(np.arange(0, 360, 1),
@@ -223,6 +221,7 @@ class FuzzyController(ControllerBase):
         self.flying.input['Asteroid_Angle_from_plane'] = angle
         self.flying.input['Asteroid Distance'] = distance
          
+    
         self.flying.compute()
         
         ship.change_angle = self.flying.output['Plane Rotation']
@@ -239,7 +238,7 @@ settings = {
     # "sound_on": True,
     # "frequency": 60,
     "real_time_multiplier": 2,
-    # "lives": 3,
+    "lives": 1,
     # "prints": True,
     "allow_key_presses": False
 }
@@ -270,8 +269,9 @@ def evaluate(individual):
 
     # Run a single game
     score = game.run()
-    print(score)
-    return(score)
+    accuracy = score.accuracy
+    asteroids_hit = score.asteroids_hit
+    return(accuracy * asteroids_hit)
 
 toolbox.register("mate", tools.cxTwoPoint)
 toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1, indpb=0.1)
@@ -281,19 +281,21 @@ toolbox.register("evaluate", evaluate)
 
 
 def main():
-    pop = toolbox.population(n=50)
+    pop = toolbox.population(n=5)
     CXPB, MUTPB, NGEN = 0.5, 0.2, 40
 
     # Evaluate the entire population
     fitnesses = map(toolbox.evaluate, pop)
     for ind, fit in zip(pop, fitnesses):
         ind.fitness.values = fit
-
+        
+    print('here3')
     for g in range(NGEN):
+        print("-- Generation %i --" % g)
         # Select the next generation individuals
         offspring = toolbox.select(pop, len(pop))
         # Clone the selected individuals
-        offspring = map(toolbox.clone, offspring)
+        offspring = list(map(toolbox.clone, offspring))
 
         # Apply crossover and mutation on the offspring
         for child1, child2 in zip(offspring[::2], offspring[1::2]):
@@ -315,8 +317,24 @@ def main():
 
         # The population is entirely replaced by the offspring
         pop[:] = offspring
+        
+                # Gather all the fitnesses in one list and print the stats
+        fits = [ind.fitness.values[0] for ind in pop]
+        
+        length = len(pop)
+        mean = sum(fits) / length
+        sum2 = sum(x*x for x in fits)
+        std = abs(sum2 / length - mean**2)**0.5
+        
+        print("  Min %s" % min(fits))
+        print("  Max %s" % max(fits))
+        print("  Avg %s" % mean)
+        print("  Std %s" % std)
 
     return pop
-ga_run = main()
+
+if __name__ == "__main__":
+    print('here2')
+    ga_run = main()
 
 

@@ -56,7 +56,7 @@ class AsteroidGame(arcade.Window):
 
         super().__init__(width=SCREEN_WIDTH,
                          height=SCREEN_HEIGHT,
-                         title=SCREEN_TITLE, update_rate=self.timestep, visible=False)
+                         title=SCREEN_TITLE, update_rate=self.timestep, visible=self.graphics_on)
 
         # Set the working directory (where we expect to find files) to the same
         # directory this .py file is in. You can leave this out of your own
@@ -215,7 +215,6 @@ class AsteroidGame(arcade.Window):
         """ Split an asteroid into chunks. """
         # Add to score
         self.score.asteroids_hit += 1
-        print('asteroid hit, current score is:', self.score)
         if asteroid.size == 4:
             self.asteroid_list.extend([AsteroidSprite(frequency=self.frequency, parent_asteroid=asteroid) for i in range(3)])
             self._play_sound(self.hit_sound1)
@@ -285,8 +284,6 @@ class AsteroidGame(arcade.Window):
                         self.game_over = True
                         self._print_terminal("Game over")
                         self.score.max_distance = self.score.frame_count * self.player_sprite.max_speed
-                        arcade.close_window()
-                        #sys.exit()
 
     def enable_consistent_randomness(self, seed: int = 0) -> None:
         """
@@ -342,7 +339,6 @@ class AsteroidGame(arcade.Window):
         self.start_new_game()
         self.center_window()
         arcade.run()
-        return(self.score)
 
 
 if __name__ == "__main__":

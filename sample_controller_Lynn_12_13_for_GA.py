@@ -272,19 +272,19 @@ def evaluate(individual):
     accuracy = score.accuracy
     asteroids_hit = score.asteroids_hit
     final_measure = accuracy * asteroids_hit
-    print('Fitness: ', final_measure)
+    #print('Fitness: ', final_measure)
     return(final_measure),
 
 toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1, indpb=0.1)
+toolbox.register("mutate", tools.mutUniformInt, low=0, up=1, indpb=0.1)
 toolbox.register("select", tools.selTournament, tournsize=3)
 toolbox.register("evaluate", evaluate)
 
 
 
 def main():
-    pop = toolbox.population(n=5)
-    CXPB, MUTPB, NGEN = 0.5, 0.2, 4
+    pop = toolbox.population(n=50)
+    CXPB, MUTPB, NGEN = 0.5, 0.2, 40
 
     # Evaluate the entire population
     fitnesses = map(toolbox.evaluate, pop)
@@ -292,6 +292,7 @@ def main():
         ind.fitness.values = fit
         
     print('Finished Initialization')
+    track_best_fit = []
     for g in range(NGEN):
         print("-- Generation %i --" % g)
         # Select the next generation individuals
@@ -327,13 +328,14 @@ def main():
         mean = sum(fits) / length
         sum2 = sum(x*x for x in fits)
         std = abs(sum2 / length - mean**2)**0.5
-        
+
+        track_best_fit.append(max(fits))
         print("  Min %s" % min(fits))
         print("  Max %s" % max(fits))
         print("  Avg %s" % mean)
         print("  Std %s" % std)
 
-    return pop
+    return(pop, track_best_fit)
 
 if __name__ == "__main__":
     ga_run = main()

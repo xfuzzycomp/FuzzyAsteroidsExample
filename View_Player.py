@@ -19,3 +19,4 @@ if __name__ == "__main__":
     """ Start the game """
     # Create a game instance
     game = FuzzyAsteroidGame(FuzzyController(best_chromosome), settings=settings)
+    game.run()

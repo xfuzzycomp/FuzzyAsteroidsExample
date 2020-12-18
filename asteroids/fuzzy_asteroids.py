@@ -14,7 +14,7 @@ import time
 from contextlib import contextmanager
 from typing import List, Any, Tuple, Dict
 
-from asteroids.game import AsteroidGame, ShipSprite, Score, Scenario
+from asteroids.game import AsteroidGame, ShipSprite, Score, Scenario, Map
 from asteroids.fuzzy_controller import SpaceShip, ControllerBase
 
 
@@ -22,10 +22,33 @@ class FuzzyAsteroidGame(AsteroidGame):
     """
     Modified version of the Asteroid Smasher game which accepts a Fuzzy Controller
     """
-    def __init__(self, controller=None, settings: Dict[str, Any] = None, scenario: Scenario=None):
-        settings = settings if settings else {}
+    def __init__(self, settings: Dict[str, Any] = None):
+        self.controller = None
 
-        # Set the controller to
+        # Check and modify settings
+        _settings = settings if settings else dict()
+
+        # Turn off key presses to ensure the controller is doing what it should
+        _settings.update({"allow_key_presses": False})
+
+        # Call constructor of AsteroidGame to set up the environment
+        super().__init__(settings=settings)
+
+        # Used to track time elapsed for checking computational performance of the controller
+        self.time_elapsed = 0
+
+    @property
+    def data(self) -> Dict[str, Tuple]:
+        # Getting data via this "getter" method will be read-only and un-assignable
+        return {
+            "frame": int(self.score.frame_count),
+            "map_dimensions": tuple(self.get_size()),
+            "asteroids": tuple(sprite.state for sprite in self.asteroid_list),
+            "bullets": tuple(sprite.state for sprite in self.asteroid_list),
+        }
+
+    def start_new_game(self, controller: ControllerBase=None, game_map: Map = None, scenario: Scenario=None, **kwargs) -> None:
+        # Store controller
         self.controller = controller
 
         # Check to see if user has given the fuzzy asteroid game a valid controller
@@ -35,21 +58,8 @@ class FuzzyAsteroidGame(AsteroidGame):
             raise TypeError("Controller class given to FuzzyAsteroidGame doesn't have a method called"
                             "``actions()`` which is used to control the Ship")
 
-        # Call constructor of AsteroidGame to set up the environment
-        super().__init__(settings=settings, scenario=scenario)
-
-        # Used to track time elapsed for checking computational performance of the controller
-        self.time_elapsed = 0
-
-    @property
-    def data(self) -> Dict[str, Tuple]:
-        # Getting data via this "getter" method will be read-only and un-assignable
-        return {
-            "frame": self.score.frame_count,
-            "map_dimensions": self.get_size(),
-            "asteroids": tuple(sprite.state for sprite in self.asteroid_list),
-            "bullets": tuple(sprite.state for sprite in self.asteroid_list),
-        }
+        # Call start new game
+        AsteroidGame.start_new_game(self, game_map=game_map, scenario=scenario, **kwargs)
 
     def call_stored_controller(self) -> None:
         """
@@ -64,11 +74,11 @@ class FuzzyAsteroidGame(AsteroidGame):
             self.controller.actions(ship, self.data)
 
             # Take controller actions and send them back to the environment
-            self.player_sprite.turn_rate = ship.turn_rate
-            self.player_sprite.thrust = ship.thrust
+            self.player_sprite.turn_rate = float(ship.turn_rate)
+            self.player_sprite.thrust = float(ship.thrust)
 
             # Fire bullet if the user has ordered the ship to shoot
-            if ship.fire_bullet:
+            if bool(ship.fire_bullet):
                 self.fire_bullet()
 
     def on_update(self, delta_time: float=1/60) -> None:
@@ -106,11 +116,11 @@ class FuzzyAsteroidGame(AsteroidGame):
 
 
 class TrainerEnvironment(FuzzyAsteroidGame):
-    def __init__(self, controller, settings: Dict[str, Any] = None, scenario: Scenario = None):
-        settings = settings if settings else {}
+    def __init__(self, settings: Dict[str, Any] = None):
+        _settings = dict(settings) if settings else dict()
 
         # Override with desired settings for training
-        settings.update({
+        _settings.update({
             "sound_on": False,
             "graphics_on": False,
             "real_time_multiplier": 0,
@@ -119,14 +129,14 @@ class TrainerEnvironment(FuzzyAsteroidGame):
         })
 
         # Call constructor of FuzzyAsteroidGame
-        super().__init__(controller, settings=settings, scenario=scenario)
+        super().__init__(settings=_settings)
 
     def on_key_press(self, symbol, modifiers) -> None:
-        # Turned off during training
+        """Turned off during training"""
         pass
 
     def on_key_release(self, symbol, modifiers) -> None:
-        # Turned off during training
+        """Turned off during training"""
         pass
 
     def on_draw(self) -> None:
@@ -148,7 +158,7 @@ def evaluate_controller(controller: ControllerBase, settings: Dict[str, Any], sc
     :param scenario: Scenario which defines the environment starting state
     :return: Score object which tracked the controller's performance in the scenario
     """
-    return FuzzyAsteroidGame(controller=controller, settings=settings, scenario=scenario).run_single_game()
+    return FuzzyAsteroidGame(settings=settings).run_single_game(controller=controller, scenario=scenario)
 
 
 def evaluate_portfolio_headless(controller: ControllerBase, portfolio: List[Scenario]) -> List[Score]:
@@ -160,4 +170,5 @@ def evaluate_portfolio_headless(controller: ControllerBase, portfolio: List[Scen
     :param portfolio: List of Scenarios which represents various environment states to evaluate over
     :return: List of Score objects which tracked the controller's performance of the portfolio
     """
-    return [TrainerEnvironment(controller=controller, scenario=scenario).run_single_game() for scenario in portfolio]
+    environment = TrainerEnvironment()
+    return [environment.run_single_game(controller=controller, scenario=scenario) for scenario in portfolio]

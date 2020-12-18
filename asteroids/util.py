@@ -73,20 +73,26 @@ class Map:
 
 
 class Scenario:
-    def __init__(self, game_map: Map = None, num_asteroids: int = 0, asteroid_states: List[Dict[str, Any]]=None):
+    def __init__(self, game_map: Map = None, num_asteroids: int = 0, asteroid_states: List[Dict[str, Any]]=None,
+                 seed: int=None):
         """
         Specify the starting state of the environment, including map dimensions and optional features
 
-        Make sure to only use
+        Make sure to only set either ``num_asteroids`` or ``asteroid_states``. If neither are set, the
+        Scenario defaults to 3 randomly placed asteroids
 
         :param map: Game Map using ``Map`` object
-        :param num_asteroids: Optional Number of asteroids
-        :param asteroid_states:
+        :param num_asteroids: Optional, Number of asteroids
+        :param asteroid_states: Optional, Asteroid Starting states
+        :param seed: Optional seeding value to pass to random.seed() which is called before asteroid creation
         """
         self.asteroid_states = list()
 
         # Store Map
         self.game_map = game_map if game_map else Map()
+
+        # Store seed
+        self.seed = seed
 
         # Check for mismatch between explicitly defined number of asteroids and Tuple of states
         if num_asteroids and asteroid_states:
@@ -122,11 +128,16 @@ class Scenario:
     def asteroids(self, frequency: float) -> List[AsteroidSprite]:
         """
         Create
-        :param frequency: OPerating frequency of the game
+        :param frequency: Operating frequency of the game
         :return: List of ShipSprites
         """
         asteroids = list()
 
+        # Seed the random number generator via an optionally defined user seed
+        if self.seed is not None:
+            random.seed(self.seed)
+
+        # Loop through and create AsteroidSprites based on starting state
         for asteroid_state in self.asteroid_states:
             if asteroid_state:
                 asteroids.append(AsteroidSprite(frequency, **asteroid_state))
@@ -140,16 +151,10 @@ class Scenario:
 
 
 if __name__ == "__main__":
-    # print(all([]))
-    # print("is_random", Scenario(Map(), num_asteroids=3).is_random)
-    # print("states", Scenario(Map(), num_asteroids=3).asteroid_states)
-    #
-    # print()
     scenario2 = Scenario(Map(), asteroid_states=[{"position": (100, 100)}])
 
     # assert not scenario2
     # print("states", Scenario(Map(), num_asteroids=3).asteroid_states)
 
     print("num_starting_asteroids", scenario2.num_starting_asteroids)
-    print()
     print("max_asteroids", scenario2.max_asteroids)

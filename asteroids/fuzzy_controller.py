@@ -89,7 +89,7 @@ class ControllerBase:
     """
     Abstract class used to manage the control of the AsteroidSmasher ship.
 
-    Users must define a __init__() for the class to instantiate correctly
+    Note: Users must define a __init__() for the class to instantiate correctly
     """
     def actions(self, ship: SpaceShip, input_data: Dict[str, Tuple]) -> None:
         """

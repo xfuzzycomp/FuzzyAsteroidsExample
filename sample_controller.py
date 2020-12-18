@@ -1,14 +1,12 @@
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Any
 
 from asteroids.fuzzy_controller import ControllerBase, SpaceShip
-from asteroids.fuzzy_asteroids import FuzzyAsteroidGame
 
 
 class FuzzyController(ControllerBase):
     """
     Class to be used by UC Fuzzy Challenge competitors to create a fuzzy logic controller
     for the Asteroid Smasher game.
-
 
     Note: Your fuzzy controller class can be called anything, but must inherit from the
     the ``ControllerBase`` class (imported above)
@@ -38,31 +36,3 @@ class FuzzyController(ControllerBase):
         # ship.turn_rate = 180.0
         ship.thrust = ship.thrust_range[1]
         ship.shoot()
-
-
-if __name__ == "__main__":
-    # Available settings
-    settings = {
-        # "graphics_on": False,
-        # "sound_on": True,
-        # "frequency": 60,
-        "real_time_multiplier": 2,
-        # "lives": 3,
-        # "prints": True,
-        "allow_key_presses": False
-    }
-
-    """ Start the game """
-    # Create a game instance
-    game = FuzzyAsteroidGame(FuzzyController(), settings=settings)
-
-    # To use the controller within the context of a training solution
-    # game = TrainerEnvironment(FuzzyController(), settings=settings)
-
-    # Run a single game
-    score = game.run()
-
-    print(score)
-    #
-    # score = game.run_headless()
-    # print(score)

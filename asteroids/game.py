@@ -9,9 +9,11 @@ Artwork from http://kenney.nl
 If Python and Arcade are installed, this example can be run from the command line with:
 python -m arcade.examples.asteroids
 """
+import pyglet
 import arcade
 import os
 import sys
+import time
 import random
 from typing import cast, Dict, Tuple, List, Any
 
@@ -31,23 +33,21 @@ class AsteroidGame(arcade.Window):
 
     Artwork from http://kenney.nl
     """
-    def __init__(self, settings: Dict[str, Any] = None, game_map: Map = None, scenario: Scenario=None):
-        settings = settings if settings else {}
+    def __init__(self, settings: Dict[str, Any] = None):
+        _settings = settings if settings else dict()
 
-        # Map
-        self.game_map = game_map if game_map else Map()
+        # Game definition
+        self.game_map = None
+        self.scenario = None
 
-        # Store scenario
-        self.scenario = scenario if scenario else Scenario(num_asteroids=3)
-
-        # Store game settingsf
-        self.frequency = settings.get("frequency", 60)  # Hz
-        self.real_time_multiplier = settings.get("real_time_multiplier", 1)
-        self.sound_on = settings.get("sound_on", False)  # Whether sounds should play
-        self.graphics_on = settings.get("graphics_on", True)  # Whether graphics should be on
-        self.lives = settings.get("lives", 3)  # Number of starting lives
-        self.prints = settings.get("prints", True)
-        self.allow_key_presses = settings.get("allow_key_presses", True)
+        # Store game settings
+        self.frequency = _settings.get("frequency", 60)  # Hz
+        self.real_time_multiplier = _settings.get("real_time_multiplier", 1)
+        self.sound_on = _settings.get("sound_on", False)  # Whether sounds should play
+        self.graphics_on = _settings.get("graphics_on", True)  # Whether graphics should be on
+        self.lives = _settings.get("lives", 3)  # Number of starting lives
+        self.prints = _settings.get("prints", True)
+        self.allow_key_presses = _settings.get("allow_key_presses", True)
 
         if self.real_time_multiplier:
             self.timestep = (1 / float(self.frequency + 1E-6)) / float(self.real_time_multiplier)
@@ -98,8 +98,20 @@ class AsteroidGame(arcade.Window):
         if self.prints:
             print(msg)
 
-    def start_new_game(self, *args, **kwargs) -> None:
-        """ Set up the game and initialize the variables. """
+    def start_new_game(self, game_map: Map = None, scenario: Scenario = None, **kwargs) -> None:
+        """
+        Start a new game within the current environment
+
+        :param game_map: optional, Map object
+        :param scenario: optional, Scenario object
+        :param kwargs: Optional kwargs
+        """
+        # Store map (if it exists otherwise use default)
+        self.game_map = game_map if game_map else Map()
+
+        # Store scenario (if it exists, otherwise use default)
+        self.scenario = scenario if scenario else Scenario(num_asteroids=3)
+
         # Instantiate blank score
         self.score = Score()
         self.score.max_asteroids = self.scenario.max_asteroids
@@ -119,15 +131,16 @@ class AsteroidGame(arcade.Window):
         self.player_sprite_list.append(self.player_sprite)
 
         # Set up the little icons that represent the player lives.
-        cur_pos = 50
-        for i in range(self.life_count):
-            life = arcade.Sprite(":resources:images/space_shooter/playerLife1_orange.png", SCALE)
-            life.center_x = cur_pos + life.width
-            life.center_y = life.height + 5
-            cur_pos += life.width
-            self.ship_life_list.append(life)
+        if self.graphics_on:
+            cur_pos = 50
+            for i in range(self.life_count):
+                life = arcade.Sprite(":resources:images/space_shooter/playerLife1_orange.png", SCALE)
+                life.center_x = cur_pos + life.width
+                life.center_y = life.height + 5
+                cur_pos += life.width
+                self.ship_life_list.append(life)
 
-        # Get the asteroids from the Scenario (which builds them based ont he Scenario settings)
+        # Get the asteroids from the Scenario (which builds them based on the Scenario settings)
         self.asteroid_list.extend(self.scenario.asteroids(self.frequency))
 
     def on_draw(self) -> None:
@@ -190,7 +203,6 @@ class AsteroidGame(arcade.Window):
 
             if symbol == arcade.key.UP:
                 self.player_sprite.thrust = self.player_sprite.thrust_range[1]
-                print(self.player_sprite.thrust)
             elif symbol == arcade.key.DOWN:
                 self.player_sprite.thrust = self.player_sprite.thrust_range[0]
 
@@ -239,9 +251,6 @@ class AsteroidGame(arcade.Window):
 
         :param delta_time: Time since last time step
         """
-        # print("on_update() game, delta time", delta_time)
-        # self.fire_bullet()
-
         self.score.frame_count += 1
 
         # Check to see if there any asteroids left
@@ -278,12 +287,21 @@ class AsteroidGame(arcade.Window):
                         self.life_count -= 1
                         self.player_sprite.respawn(self.game_map.center)
                         self.split_asteroid(cast(AsteroidSprite, asteroids[0]))
-                        self.ship_life_list.pop().remove_from_sprite_lists()
+
+                        if self.graphics_on:
+                            self.ship_life_list.pop().remove_from_sprite_lists()
+
                         self._print_terminal("Crash")
                     else:
                         self.game_over = True
-                        self._print_terminal("Game over")
                         self.score.max_distance = self.score.frame_count * self.player_sprite.max_speed
+                        self._print_terminal("***********************************")
+                        self._print_terminal("             Game over             ")
+                        self._print_terminal("***********************************")
+                        self._print_terminal("Game Score: " + str(self.score))
+
+                        if self.graphics_on:
+                            arcade.exit()
 
     def enable_consistent_randomness(self, seed: int = 0) -> None:
         """
@@ -292,62 +310,43 @@ class AsteroidGame(arcade.Window):
         See [Python ``random`` docs] (https://docs.python.org/3/library/random.html) to learn more
 
         :param seed: Integer seed value
-        :return:
         """
         random.seed(seed)
 
-    def run_single_game(self, *args, **kwargs) -> Score:
+    def run(self, **kwargs) -> Score:
         """
-        Run a single instance of the game.
+        Run a full game, based on the settings passed in as keyword arguments (**kwargs)
 
-        Note: This is the recommended function to use to run the game without graphics
-
-        :return: Score from the environment
+        :param game_map: optional, Map object
+        :param scenario: optional, Scenario object
+        :param kwargs: optional keyword arguments passed to ``start_new_game()``
+        :return: Score object which defines final score of the environment
         """
-        self.start_new_game()
+        # Set up the environment with a new version of the game
+        self.start_new_game(**kwargs)
 
+        # Run the environment based off of the graphics settings
         if self.graphics_on:
-            self.on_draw()
+            # Run the environment through the event loop if graphics are on
+            self.center_window()
+            arcade.run()
+        else:
+            # Run the environment frame-by-frame explicitly without graphics
+            while not self.game_over:
+                self.on_update(1 / self.frequency)
 
-        while not self.game_over:
-            self.on_update(1 / self.frequency)
-
+        # Return the final score (Score object)
         return self.score
-
-    def run_no_graphics(self, *args, **kwargs) -> Score:
-        """
-        Run a single instance of the game.
-
-        Note: This is the recommended function to use to run the game without graphics
-
-        :return: Score from the environment
-        """
-        self.start_new_game()
-
-        while not self.game_over:
-            self.on_update(1 / self.frequency)
-
-        return self.score
-
-    def run(self) -> None:
-        """
-        Run a "blocking" version of the game which does not close upon completion.
-
-        Note: This is the recommended way to run the game with graphics on.
-        :return:
-        """
-        self.start_new_game()
-        self.center_window()
-        arcade.run()
 
 
 if __name__ == "__main__":
     """ Start the game """
     settings = {
-        "frequency": 10,
+        # "frequency": 10,
+        "graphics_on": False,
         "sound_on": False
     }
-    window = AsteroidGame(settings, scenario=Scenario(num_asteroids=3))
-    window.run()
-    # window.run_single_game()
-
+    window = AsteroidGame(settings)
+    score = window.run(scenario=Scenario(num_asteroids=3))
+    score = window.run(scenario=Scenario(num_asteroids=3))
+    score = window.run(scenario=Scenario(num_asteroids=3))

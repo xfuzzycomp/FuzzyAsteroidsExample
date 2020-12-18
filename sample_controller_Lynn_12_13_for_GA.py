@@ -4,11 +4,6 @@ import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 
-from deap import base, creator
-import random
-from deap import tools
-
-
 from asteroids.fuzzy_controller import ControllerBase, SpaceShip
 from asteroids.fuzzy_asteroids import FuzzyAsteroidGame, TrainerEnvironment
 
@@ -70,19 +65,19 @@ class FuzzyController(ControllerBase):
         
         # Define the Output Mfs
         ################### Plane Rotation ############################################
-        max_bound_rot = 2
-        min_bound_rot = -2
+        max_bound_rot = 180
+        min_bound_rot = -180
         rot_interval = max_bound_rot/2
-        Plane_Rotation = ctrl.Consequent(np.arange(min_bound_rot, max_bound_rot+.5, .5), 'Plane Rotation')
-        Plane_Rotation['neg_large'] = fuzz.trimf(Plane_Rotation.universe, [min_bound_rot, min_bound_rot, -rot_interval + .5])
-        Plane_Rotation['zero'] = fuzz.trimf(Plane_Rotation.universe, [-1, 0, 1])
-        Plane_Rotation['large'] = fuzz.trimf(Plane_Rotation.universe, [rot_interval - .5, max_bound_rot, max_bound_rot])
+        Plane_Rotation = ctrl.Consequent(np.arange(min_bound_rot, max_bound_rot, 1), 'Plane Rotation')
+        Plane_Rotation['neg_large'] = fuzz.trimf(Plane_Rotation.universe, [min_bound_rot, min_bound_rot, -2])
+        Plane_Rotation['zero'] = fuzz.trimf(Plane_Rotation.universe, [-5, 0, 5])
+        Plane_Rotation['large'] = fuzz.trimf(Plane_Rotation.universe, [2, max_bound_rot, max_bound_rot])
         #Plane_Rotation.view()
         
         
         ################### Plane Movement ############################################
-        max_bound_thrust = 4
-        min_bound_thrust = -4
+        max_bound_thrust = 480
+        min_bound_thrust = -480
         thrust_interval = max_bound_thrust/2
         Plane_Thrust = ctrl.Consequent(np.arange(min_bound_thrust, max_bound_thrust+1, 1), 'Plane Thrust')
         Plane_Thrust['neg_large'] = fuzz.trimf(Plane_Thrust.universe, [min_bound_thrust, min_bound_thrust, -thrust_interval])
@@ -224,121 +219,12 @@ class FuzzyController(ControllerBase):
     
         self.flying.compute()
         
-        ship.change_angle = self.flying.output['Plane Rotation']
-        ship.thrust  = self.flying.output['Plane Thrust']
+        ship.turn_rate = self.flying.output['Plane Rotation']
+        ship.thrust = self.flying.output['Plane Thrust']
         
         if self.flying.output['Plane Shooting'] > 5:
              ship.shoot()
 
+best_chromosome = [0, 0, 0.22704675799038299, 0.18882866236303364, 1, 0.47358187053744416, 0, 1, 0.585630314551824, 0.790883187507398, 0.27213557586106574, 0, 0, 0, 0.9404657423334345, 1, 0, 0.5853468565829895, 0.6630343126200285, 0.20659052403638267, 0.8678535065106383, 0.07331896008842731, 1, 0, 1, 0.1019020994229195, 0.22845723584997757, 1, 0, 0, 0, 1, 0, 0.36694807573878296, 0.08019529514682067, 0.8204367511415689, 1, 1, 0.9538672228134206, 0.922668852048131, 0.05566674348341649, 0, 0.21565167263721652, 0, 0, 0, 1, 0, 1, 0, 0.01743356009048136, 1, 1, 1]
 
-#if __name__ == "__main__":
-# Available settings
-settings = {
-    # "graphics_on": False,
-    # "sound_on": True,
-    # "frequency": 60,
-    # "real_time_multiplier": 2,
-    "lives": 1,
-    # "prints": True,
-    "allow_key_presses": False
-}
-
-""" Start the game """
-# Create a game instance
-#game = FuzzyAsteroidGame(FuzzyController(), settings=settings)
-
-
-
-
-
-creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-creator.create("Individual", list, fitness=creator.FitnessMax)
-
-
-IND_SIZE = 54
-
-toolbox = base.Toolbox()
-toolbox.register("attr_float", random.random)
-toolbox.register("individual", tools.initRepeat, creator.Individual,
-                 toolbox.attr_float, n=IND_SIZE)
-toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-
-def evaluate(individual):
-    # To use the controller within the context of a training solution
-    game = TrainerEnvironment(FuzzyController(individual), settings=settings)
-
-    # Run a single game
-    score = game.run_no_graphics()
-    accuracy = score.accuracy
-    asteroids_hit = score.asteroids_hit
-    final_measure = accuracy * asteroids_hit
-    #print('Fitness: ', final_measure)
-    return(final_measure),
-
-toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutUniformInt, low=0, up=1, indpb=0.1)
-toolbox.register("select", tools.selTournament, tournsize=3)
-toolbox.register("evaluate", evaluate)
-
-
-
-def main():
-    pop = toolbox.population(n=50)
-    CXPB, MUTPB, NGEN = 0.5, 0.2, 40
-
-    # Evaluate the entire population
-    fitnesses = map(toolbox.evaluate, pop)
-    for ind, fit in zip(pop, fitnesses):
-        ind.fitness.values = fit
-        
-    print('Finished Initialization')
-    track_best_fit = []
-    for g in range(NGEN):
-        print("-- Generation %i --" % g)
-        # Select the next generation individuals
-        offspring = toolbox.select(pop, len(pop))
-        # Clone the selected individuals
-        offspring = list(map(toolbox.clone, offspring))
-
-        # Apply crossover and mutation on the offspring
-        for child1, child2 in zip(offspring[::2], offspring[1::2]):
-            if random.random() < CXPB:
-                toolbox.mate(child1, child2)
-                del child1.fitness.values
-                del child2.fitness.values
-
-        for mutant in offspring:
-            if random.random() < MUTPB:
-                toolbox.mutate(mutant)
-                del mutant.fitness.values
-
-        # Evaluate the individuals with an invalid fitness
-        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-        fitnesses = map(toolbox.evaluate, invalid_ind)
-        for ind, fit in zip(invalid_ind, fitnesses):
-            ind.fitness.values = fit
-
-        # The population is entirely replaced by the offspring
-        pop[:] = offspring
-        
-                # Gather all the fitnesses in one list and print the stats
-        fits = [ind.fitness.values[0] for ind in pop]
-        
-        length = len(pop)
-        mean = sum(fits) / length
-        sum2 = sum(x*x for x in fits)
-        std = abs(sum2 / length - mean**2)**0.5
-
-        track_best_fit.append(max(fits))
-        print("  Min %s" % min(fits))
-        print("  Max %s" % max(fits))
-        print("  Avg %s" % mean)
-        print("  Std %s" % std)
-
-    return(pop, track_best_fit)
-
-if __name__ == "__main__":
-    ga_run = main()
-    print(ga_run)
-
-
+controller = FuzzyController(best_chromosome)

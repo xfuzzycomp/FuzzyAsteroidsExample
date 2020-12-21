@@ -36,8 +36,7 @@ class AsteroidGame(arcade.Window):
     def __init__(self, settings: Dict[str, Any] = None):
         _settings = settings if settings else dict()
 
-        # Game definition
-        self.game_map = None
+        # Game starting state definition (map, asteroids)
         self.scenario = None
 
         # Store game settings
@@ -98,17 +97,13 @@ class AsteroidGame(arcade.Window):
         if self.prints:
             print(msg)
 
-    def start_new_game(self, game_map: Map = None, scenario: Scenario = None, **kwargs) -> None:
+    def start_new_game(self, scenario: Scenario = None, **kwargs) -> None:
         """
         Start a new game within the current environment
 
-        :param game_map: optional, Map object
-        :param scenario: optional, Scenario object
+        :param scenario: optional, Scenario object (includes asteroid starting states and Map)
         :param kwargs: Optional kwargs
         """
-        # Store map (if it exists otherwise use default)
-        self.game_map = game_map if game_map else Map()
-
         # Store scenario (if it exists, otherwise use default)
         self.scenario = scenario if scenario else Scenario(num_asteroids=3)
 
@@ -127,7 +122,7 @@ class AsteroidGame(arcade.Window):
         self.ship_life_list = arcade.SpriteList()
 
         # Set up the player
-        self.player_sprite = ShipSprite(self.frequency, self.game_map.center)
+        self.player_sprite = ShipSprite(self.frequency, self.scenario.game_map.center)
         self.player_sprite_list.append(self.player_sprite)
 
         # Set up the little icons that represent the player lives.
@@ -286,7 +281,7 @@ class AsteroidGame(arcade.Window):
                     if self.life_count > 0:
                         self.score.deaths += 1
                         self.life_count -= 1
-                        self.player_sprite.respawn(self.game_map.center)
+                        self.player_sprite.respawn(self.scenario.game_map.center)
                         self.split_asteroid(cast(AsteroidSprite, asteroids[0]))
 
                         if self.graphics_on:
@@ -312,13 +307,12 @@ class AsteroidGame(arcade.Window):
 
         :param seed: Integer seed value
         """
-        random.seed(seed)
+        self.scenario.seed = seed
 
     def run(self, **kwargs) -> Score:
         """
         Run a full game, based on the settings passed in as keyword arguments (**kwargs)
 
-        :param game_map: optional, Map object
         :param scenario: optional, Scenario object
         :param kwargs: optional keyword arguments passed to ``start_new_game()``
         :return: Score object which defines final score of the environment

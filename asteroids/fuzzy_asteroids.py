@@ -147,28 +147,3 @@ class TrainerEnvironment(FuzzyAsteroidGame):
         output = f"Running in Training Mode"
         arcade.draw_text(output, start_x=self.get_size()[0]/2.0, start_y=self.get_size()[1]/2.0,
                          color=arcade.color.WHITE, font_size=16, align="center", anchor_x="center")
-
-
-def evaluate_controller(controller: ControllerBase, settings: Dict[str, Any], scenario: Scenario) -> Score:
-    """
-    Call the environment with the specified controller/settings
-
-    :param controller: Class that inherits from ``ControllerBase``
-    :param settings: Dictionary of settings
-    :param scenario: Scenario which defines the environment starting state
-    :return: Score object which tracked the controller's performance in the scenario
-    """
-    return FuzzyAsteroidGame(settings=settings).run_single_game(controller=controller, scenario=scenario)
-
-
-def evaluate_portfolio_headless(controller: ControllerBase, portfolio: List[Scenario]) -> List[Score]:
-    """
-    Simple function to evaluate a controller against a portfolio in ''headless'' mode which is meant to
-    be used for training.
-
-    :param controller: Class which inherits from ``ControllerBase`` and
-    :param portfolio: List of Scenarios which represents various environment states to evaluate over
-    :return: List of Score objects which tracked the controller's performance of the portfolio
-    """
-    environment = TrainerEnvironment()
-    return [environment.run_single_game(controller=controller, scenario=scenario) for scenario in portfolio]

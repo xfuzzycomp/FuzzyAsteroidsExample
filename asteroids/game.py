@@ -302,7 +302,7 @@ class AsteroidGame(arcade.Window):
                         self._print_terminal("Game Score: " + str(self.score))
 
                         if self.graphics_on:
-                            arcade.exit()
+                            pyglet.app.exit()
 
     def enable_consistent_randomness(self, seed: int = 0) -> None:
         """

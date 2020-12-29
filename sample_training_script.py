@@ -1,11 +1,7 @@
-from typing import Tuple, Dict, Any
+from asteroids.fuzzy_asteroids import TrainerEnvironment
 
 from sample_controller import FuzzyController
-from asteroids.fuzzy_asteroids import FuzzyAsteroidGame, TrainerEnvironment
-
-from contextlib import contextmanager
-import multiprocessing
-
+from sample_score import SampleScore
 
 if __name__ == "__main__":
     # Available settings
@@ -22,6 +18,6 @@ if __name__ == "__main__":
     for i in range(1000):
         # Call run() on an instance of the TrainerEnvironment
         # This function automatically manages cleanup
-        score = game.run(controller=FuzzyController())
+        score = game.run(controller=FuzzyController(), score=SampleScore())
 
         print(f"Generation {i}: {str(score)}")

@@ -14,7 +14,7 @@ import time
 from contextlib import contextmanager
 from typing import List, Any, Tuple, Dict
 
-from asteroids.game import AsteroidGame, ShipSprite, Score, Scenario, Map
+from asteroids.game import AsteroidGame, ShipSprite, Score, Scenario
 from asteroids.fuzzy_controller import SpaceShip, ControllerBase
 
 
@@ -47,7 +47,13 @@ class FuzzyAsteroidGame(AsteroidGame):
             "bullets": tuple(sprite.state for sprite in self.asteroid_list),
         }
 
-    def start_new_game(self, controller: ControllerBase=None, game_map: Map = None, scenario: Scenario=None, **kwargs) -> None:
+    def start_new_game(self, controller: ControllerBase=None, scenario: Scenario=None, score: Score=None) -> None:
+        """
+
+        :param controller: object that is subclass of ControllerBase
+        :param scenario: optional Scenario
+        :param score: optional Score (should inherit from ``Score``)
+        """
         # Store controller
         self.controller = controller
 
@@ -59,7 +65,7 @@ class FuzzyAsteroidGame(AsteroidGame):
                             "``actions()`` which is used to control the Ship")
 
         # Call start new game
-        AsteroidGame.start_new_game(self, game_map=game_map, scenario=scenario, **kwargs)
+        AsteroidGame.start_new_game(self, scenario=scenario, score=score)
 
     def call_stored_controller(self) -> None:
         """
@@ -87,6 +93,9 @@ class FuzzyAsteroidGame(AsteroidGame):
 
         # Call on_update() of AsteroidGame parent
         AsteroidGame.on_update(self, delta_time)
+
+        if self.game_over:
+            self.score.final_update(environment=self)
 
     @contextmanager
     def _timer_interface(self):

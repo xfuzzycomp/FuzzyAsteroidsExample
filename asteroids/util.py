@@ -18,6 +18,12 @@ from asteroids.sprites import AsteroidSprite
 class Score:
     """
     Class which is used to keep track of various scoring metrics
+
+    This class can be inherited to create custom subclasses for extending the Scoring behavior, useful
+    for competitors to create their own scoring metrics. If you inherit this class make sure to override the
+    following methods
+    *  timestep_update()
+    *  final_update()
     """
     def __init__(self):
         """
@@ -26,12 +32,14 @@ class Score:
         """
         self.asteroids_hit = 0
         self.bullets_fired = 0
-        self.deaths = 0
         self.distance_travelled = 0
+        self.deaths = 0
+
+        # Maximum values (used for normalizing)
         self.max_asteroids = 0
         self.max_distance = 0
-        self.distance_travelled = 0
 
+        # The amount of timesteps the score has been counted for
         self.frame_count = 0
 
     def __repr__(self):
@@ -44,6 +52,32 @@ class Score:
     @property
     def fraction_total_asteroids_hit(self):
         return 0.0 if not self.asteroids_hit else self.asteroids_hit / self.max_asteroids
+
+    @property
+    def fraction_distance_travelled(self):
+        return 0.0 if not self.max_distance else self.distance_travelled/self.max_distance
+
+    def timestep_update(self, environment) -> None:
+        """
+        Function that is called at the end of each time step.
+
+        User can override this function to add/update scoring parameters which should be updated
+        at the end of each time step
+
+        :param environment: Environment object
+        """
+        pass
+
+    def final_update(self, environment) -> None:
+        """
+        Function that is called at the end of each game (when game over).
+
+        User can override this function to add/update scoring parameters which should be updated
+        at the end of a game
+
+        :param environment: Environment object
+        """
+        pass
 
 
 class Map:
@@ -73,17 +107,17 @@ class Map:
 
 
 class Scenario:
-    def __init__(self, game_map: Map = None, num_asteroids: int = 0, asteroid_states: List[Dict[str, Any]]=None,
-                 seed: int=None):
+    def __init__(self, num_asteroids: int = 0, asteroid_states: List[Dict[str, Any]]=None,
+                 game_map: Map = None, seed: int=None):
         """
         Specify the starting state of the environment, including map dimensions and optional features
 
         Make sure to only set either ``num_asteroids`` or ``asteroid_states``. If neither are set, the
         Scenario defaults to 3 randomly placed asteroids
 
-        :param map: Game Map using ``Map`` object
         :param num_asteroids: Optional, Number of asteroids
         :param asteroid_states: Optional, Asteroid Starting states
+        :param map: Game Map using ``Map`` object
         :param seed: Optional seeding value to pass to random.seed() which is called before asteroid creation
         """
         self.asteroid_states = list()
@@ -127,7 +161,7 @@ class Scenario:
 
     def asteroids(self, frequency: float) -> List[AsteroidSprite]:
         """
-        Create
+        Create asteroid sprites
         :param frequency: Operating frequency of the game
         :return: List of ShipSprites
         """

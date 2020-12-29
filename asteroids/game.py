@@ -12,14 +12,11 @@ python -m arcade.examples.asteroids
 import pyglet
 import arcade
 import os
-import sys
-import time
-import random
 from typing import cast, Dict, Tuple, List, Any
 
 from asteroids.sprites import AsteroidSprite, BulletSprite, ShipSprite
 from asteroids.settings import *
-from asteroids.util import Score, Scenario, Map
+from asteroids.util import Score, Scenario
 
 
 class AsteroidGame(arcade.Window):
@@ -97,18 +94,20 @@ class AsteroidGame(arcade.Window):
         if self.prints:
             print(msg)
 
-    def start_new_game(self, scenario: Scenario = None, **kwargs) -> None:
+    def start_new_game(self, scenario: Scenario = None, score: Score=None) -> None:
         """
         Start a new game within the current environment
 
         :param scenario: optional, Scenario object (includes asteroid starting states and Map)
-        :param kwargs: Optional kwargs
+        :param score: optional Score (should inherit from ``Score``
         """
         # Store scenario (if it exists, otherwise use default)
         self.scenario = scenario if scenario else Scenario(num_asteroids=3)
 
-        # Instantiate blank score
-        self.score = Score()
+        # Instantiate blank score (from optional user-defined score)
+        self.score = score if score else Score()
+
+        # Update score parameter
         self.score.max_asteroids = self.scenario.max_asteroids
 
         # Set trackers used for game over checks
@@ -313,9 +312,16 @@ class AsteroidGame(arcade.Window):
         """
         Run a full game, based on the settings passed in as keyword arguments (**kwargs)
 
-        :param scenario: optional, Scenario object
         :param kwargs: optional keyword arguments passed to ``start_new_game()``
         :return: Score object which defines final score of the environment
+
+        :Keyword Arguments:
+        * *controller* (``ControllerBase``) --
+            controller object that subclasses ControllerBase
+        * *scenario* (``Scenario``) --
+            optional environment scenario definition
+        * *score* (``Score``) --
+            optional score object which should subclass ``Score``
         """
         # Set up the environment with a new version of the game
         self.start_new_game(**kwargs)

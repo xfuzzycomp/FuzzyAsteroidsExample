@@ -270,7 +270,7 @@ class AsteroidGame(arcade.Window):
             # Perform checks on the player sprite if it is not respawning
             if not self.player_sprite.respawn_time_left:
 
-                self.score.distance_travelled += (self.player_sprite.change_x**2+ self.player_sprite.change_y**2)**0.5 # meters
+                self.score.distance_travelled += (self.player_sprite.change_x**2+self.player_sprite.change_y**2)**0.5 # meters
 
                 # Check for collisions with the asteroids (returns collisions)
                 asteroids = arcade.check_for_collision_with_list(self.player_sprite, self.asteroid_list)
@@ -290,6 +290,7 @@ class AsteroidGame(arcade.Window):
                     else:
                         self.game_over = True
                         self.score.max_distance = self.score.frame_count * self.player_sprite.max_speed
+
                         self._print_terminal("***********************************")
                         self._print_terminal("             Game over             ")
                         self._print_terminal("***********************************")
@@ -297,6 +298,12 @@ class AsteroidGame(arcade.Window):
 
                         if self.graphics_on:
                             pyglet.app.exit()
+
+        # Run final/time step score update
+        if self.game_over:
+            self.score.final_update(environment=self)
+        else:
+            self.score.timestep_update(environment=self)
 
     def enable_consistent_randomness(self, seed: int = 0) -> None:
         """

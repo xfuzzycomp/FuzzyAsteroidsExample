@@ -94,9 +94,6 @@ class FuzzyAsteroidGame(AsteroidGame):
         # Call on_update() of AsteroidGame parent
         AsteroidGame.on_update(self, delta_time)
 
-        if self.game_over:
-            self.score.final_update(environment=self)
-
     @contextmanager
     def _timer_interface(self):
         """

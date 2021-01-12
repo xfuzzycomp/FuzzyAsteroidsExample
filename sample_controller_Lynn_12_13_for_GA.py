@@ -5,7 +5,6 @@ import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 
 from asteroids.fuzzy_controller import ControllerBase, SpaceShip
-from asteroids.fuzzy_asteroids import FuzzyAsteroidGame, TrainerEnvironment
 
 
 class FuzzyController(ControllerBase):
@@ -40,7 +39,7 @@ class FuzzyController(ControllerBase):
         Asteroid_Angle_from_plane['neg_small'] = fuzz.trimf(Asteroid_Angle_from_plane.universe, [-60, 0, 1])
         Asteroid_Angle_from_plane['neg_medium'] = fuzz.trimf(Asteroid_Angle_from_plane.universe, [-120, -60, 0])
         Asteroid_Angle_from_plane['neg_large'] = fuzz.trimf(Asteroid_Angle_from_plane.universe, [-180, -180, -60])
-        
+        #Asteroid_Angle_from_plane['zero'] = fuzz.trimf(Asteroid_Angle_from_plane.universe, [-5, 0, 5])
         Asteroid_Angle_from_plane['small'] = fuzz.trimf(Asteroid_Angle_from_plane.universe, [-1, 0, 60])
         Asteroid_Angle_from_plane['medium'] = fuzz.trimf(Asteroid_Angle_from_plane.universe, [0, 60, 120])
         Asteroid_Angle_from_plane['large'] = fuzz.trimf(Asteroid_Angle_from_plane.universe, [60, 180, 180])
@@ -70,7 +69,7 @@ class FuzzyController(ControllerBase):
         rot_interval = max_bound_rot/2
         Plane_Rotation = ctrl.Consequent(np.arange(min_bound_rot, max_bound_rot, 1), 'Plane Rotation')
         Plane_Rotation['neg_large'] = fuzz.trimf(Plane_Rotation.universe, [min_bound_rot, min_bound_rot, -2])
-        Plane_Rotation['zero'] = fuzz.trimf(Plane_Rotation.universe, [-5, 0, 5])
+        Plane_Rotation['zero'] = fuzz.trimf(Plane_Rotation.universe, [-20, 0, 20])
         Plane_Rotation['large'] = fuzz.trimf(Plane_Rotation.universe, [2, max_bound_rot, max_bound_rot])
         #Plane_Rotation.view()
         
@@ -82,7 +81,7 @@ class FuzzyController(ControllerBase):
         Plane_Thrust = ctrl.Consequent(np.arange(min_bound_thrust, max_bound_thrust+1, 1), 'Plane Thrust')
         Plane_Thrust['neg_large'] = fuzz.trimf(Plane_Thrust.universe, [min_bound_thrust, min_bound_thrust, -thrust_interval])
         Plane_Thrust['neg_small'] = fuzz.trimf(Plane_Thrust.universe, [-thrust_interval-1, -thrust_interval, 0])
-        Plane_Thrust['zero'] = fuzz.trimf(Plane_Thrust.universe, [-1, 0, 1])
+        Plane_Thrust['zero'] = fuzz.trimf(Plane_Thrust.universe, [-20, 0, 20])
         Plane_Thrust['large'] = fuzz.trimf(Plane_Thrust.universe, [thrust_interval, max_bound_thrust, max_bound_thrust])
         Plane_Thrust['small'] = fuzz.trimf(Plane_Thrust.universe, [0, thrust_interval, thrust_interval + 1])
         
@@ -130,7 +129,7 @@ class FuzzyController(ControllerBase):
                 shoot_strings.append('True')
         
         # Define the Rule Base
-        rule1 = ctrl.Rule(antecedent= (Asteroid_Angle_from_plane['neg_small'] & Asteroid_Distance['small']), consequent= (Plane_Rotation[rotation_strings[0]], Plane_Thrust[thrust_strings[0]], Plane_Shooting[shoot_strings[0]]), label='rule 1')
+        rule1 = ctrl.Rule(Asteroid_Angle_from_plane['neg_small'] & Asteroid_Distance['small'], consequent= (Plane_Rotation[rotation_strings[0]], Plane_Thrust[thrust_strings[0]], Plane_Shooting[shoot_strings[0]]), label='rule 1')
         rule2 = ctrl.Rule(Asteroid_Angle_from_plane['neg_small'] & Asteroid_Distance['medium'], consequent= (Plane_Rotation[rotation_strings[1]], Plane_Thrust[thrust_strings[1]], Plane_Shooting[shoot_strings[1]]), label='rule 2')
         rule3 = ctrl.Rule(Asteroid_Angle_from_plane['neg_small'] & Asteroid_Distance['large'], consequent= (Plane_Rotation[rotation_strings[2]], Plane_Thrust[thrust_strings[2]], Plane_Shooting[shoot_strings[2]]), label='rule 3')
         
@@ -163,7 +162,7 @@ class FuzzyController(ControllerBase):
                                               rule10, rule11, rule12,
                                               rule13, rule14, rule15,
                                               rule16, rule17, rule18]) 
-        self.flying = ctrl.ControlSystemSimulation(self.plane_ctrl)
+        self.flying = ctrl.ControlSystemSimulation(self.plane_ctrl,  flush_after_run=100)
 
     def actions(self, ship: SpaceShip, input_data: Dict[str, Tuple]) -> None:
         """
@@ -224,7 +223,3 @@ class FuzzyController(ControllerBase):
         
         if self.flying.output['Plane Shooting'] > 5:
              ship.shoot()
-
-best_chromosome = [0, 0, 0.22704675799038299, 0.18882866236303364, 1, 0.47358187053744416, 0, 1, 0.585630314551824, 0.790883187507398, 0.27213557586106574, 0, 0, 0, 0.9404657423334345, 1, 0, 0.5853468565829895, 0.6630343126200285, 0.20659052403638267, 0.8678535065106383, 0.07331896008842731, 1, 0, 1, 0.1019020994229195, 0.22845723584997757, 1, 0, 0, 0, 1, 0, 0.36694807573878296, 0.08019529514682067, 0.8204367511415689, 1, 1, 0.9538672228134206, 0.922668852048131, 0.05566674348341649, 0, 0.21565167263721652, 0, 0, 0, 1, 0, 1, 0, 0.01743356009048136, 1, 1, 1]
-
-controller = FuzzyController(best_chromosome)

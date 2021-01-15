@@ -1,6 +1,6 @@
-from asteroids.fuzzy_asteroids import AsteroidGame, FuzzyAsteroidGame
+from fuzzy_asteroids.fuzzy_asteroids import AsteroidGame, FuzzyAsteroidGame
 
-from sample_controller import FuzzyController
+from src.sample_controller import FuzzyController
 
 
 if __name__ == "__main__":

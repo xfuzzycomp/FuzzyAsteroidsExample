@@ -1,5 +1,5 @@
-from asteroids.util import Score
-from asteroids.game import AsteroidGame
+from fuzzy_asteroids.util import Score
+from fuzzy_asteroids.game import AsteroidGame
 
 
 class SampleScore(Score):

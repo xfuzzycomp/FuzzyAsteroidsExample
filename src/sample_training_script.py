@@ -1,6 +1,6 @@
-from asteroids.fuzzy_asteroids import TrainerEnvironment
+from fuzzy_asteroids.fuzzy_asteroids import TrainerEnvironment
 
-from sample_controller import FuzzyController
+from src.sample_controller import FuzzyController
 from sample_score import SampleScore
 
 if __name__ == "__main__":

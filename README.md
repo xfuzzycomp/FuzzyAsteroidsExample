@@ -25,6 +25,19 @@ Further details on the competition aspect of the challenge will be decided soon.
 
 7. Now you should be able to run Asteroid Smasher!
 
+## Updating the FuzzyAsteroids environment
+
+We may make occasional improvements to the FuzzyAsteroids environment and will push to this repository. 
+[https://github.com/TimArnettThales/FuzzyAsteroids](https://github.com/TimArnettThales/FuzzyAsteroids)
+
+If you wish to upgrade ALL of your project dependencies, you can use the following command. 
+
+    pip install --upgrade --force-reinstall -r requirements.txt
+
+If you wish to upgrade ONLY the Fuzzy Asteroids environment, you can also do the following
+
+    pip install --upgrade --force-reinstall  git+https://github.com/TimArnettThales/FuzzyAsteroids.git@master#egg=fuzzy_asteroids
+
 ## Selecting an IDE
 
 * [Pycharm Community](https://www.jetbrains.com/pycharm/download/)

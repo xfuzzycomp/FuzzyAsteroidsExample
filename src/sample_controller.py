@@ -1,6 +1,10 @@
 from typing import Tuple, Dict, Any
 
+<<<<<<< HEAD:sample_controller.py
 from asteroids.fuzzy_controller import ControllerBase, SpaceShip
+=======
+from fuzzy_asteroids.fuzzy_controller import ControllerBase, SpaceShip
+>>>>>>> master:src/sample_controller.py
 
 
 class FuzzyController(ControllerBase):

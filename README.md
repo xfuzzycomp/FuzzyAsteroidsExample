@@ -1,6 +1,6 @@
-# UCFuzzyChallenge
+# FuzzyAsteroidsExample
 
-This repository holds the code needed for the 2021 University of Cincinnati Fuzzy Challenge.
+This repository holds the example code needed for the 2021 University of Cincinnati Fuzzy Challenge.
 
 ## The Challenge
 

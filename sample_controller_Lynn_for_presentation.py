@@ -47,9 +47,8 @@ class FuzzyController(ControllerBase):
 
 
         # Define the Rule Base
-        rule1 = ctrl.Rule(Asteroid_Angle_from_plane['neg_small'] & input2['small'], consequent=(
-        output1[0], output2[0], Plane_Shooting[0]))[shoot_strings[12]]))
-
+        rule1 = ctrl.Rule(Asteroid_Angle_from_plane['neg_small'] & input2['small'], consequent=(output1[0], output2[0],
+                                                                                                 Plane_Shooting[0]))
         # more rules, all the rules
 
         self.plane_ctrl = ctrl.ControlSystem([rule1, rule2, rule3, ...])
@@ -86,4 +85,5 @@ class FuzzyController(ControllerBase):
 
         self.flying.compute()
 
+        # As long as its in range - if outside of range, it will just go to max or min
         ship.thrust = self.flying.output['Plane Thrust']

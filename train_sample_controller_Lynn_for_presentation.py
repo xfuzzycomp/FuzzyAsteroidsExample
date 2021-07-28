@@ -9,13 +9,13 @@ from sample_controller_Lynn_12_13_for_GA import FuzzyController
 from sample_score_Lynn import SampleScore
 
 
-def evaluate(individual):
+def evaluate(individual) -> tuple:
     # Run a single game
     score = game.run(controller=FuzzyController(individual), score=SampleScore())
     # how does the chromosome perform
-
+    final_score = score.asteroids_hit
     # The comma after return is important when using DEAP
-    return (score),
+    return final_score,
 
 
 def main(game, population_size, max_generations):

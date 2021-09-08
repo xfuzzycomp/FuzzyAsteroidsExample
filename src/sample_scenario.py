@@ -17,7 +17,7 @@ scenario_random_repeatable = Scenario(name="random_repeatable", num_asteroids=3,
 # - Haas 5 lives
 scenario_ship = Scenario(name="scenario_ship",
                          num_asteroids=4,
-                         ship_state={"position": (300, 500), "angle": 180, "lives": 5})
+                         ship_states=[{"position": (300, 500), "angle": 180, "lives": 5}])
 
 # Scenario which uses default ship state and placed asteroids in a line which fly toward the ship
 scenario_asteroid_wall = Scenario(
@@ -28,7 +28,7 @@ scenario_asteroid_wall = Scenario(
                      {"position": (500, 200), "angle": 0.0, "speed": 40},
                      {"position": (600, 200), "angle": 0.0, "speed": 40},
                      ],
-    ship_state={"position": (100, 500)},
+    ship_states=[{"position": (100, 500)}],
 )
 
 
@@ -38,7 +38,7 @@ scenario_asteroids_small = Scenario(
     name="asteroids-small-1",
     asteroid_states=[{"position": (200, 200), "angle": 0.0, "speed": 0, "size": 1},
                      ],
-    ship_state={"position": (100, 500)},
+    ship_states=[{"position": (100, 500)}],
 )
 
 portfolio = [

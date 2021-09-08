@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, Any, List
+from typing import Tuple, Dict, Any
 
 from fuzzy_asteroids.fuzzy_controller import ControllerBase, SpaceShip
 
@@ -23,7 +23,7 @@ class FuzzyController(ControllerBase):
         """
         pass
 
-    def actions(self, ships: List[SpaceShip], input_data: Dict[str, Tuple]) -> None:
+    def actions(self, ship: SpaceShip, input_data: Dict[str, Tuple]) -> None:
         """
         Compute control actions of the ship. Perform all command actions via the ``ship``
         argument. This class acts as an intermediary between the controller and the environment.
@@ -33,7 +33,6 @@ class FuzzyController(ControllerBase):
         :param ship: Object to use when controlling the SpaceShip
         :param input_data: Input data which describes the current state of the environment
         """
-        for ship in ships:
-            # ship.turn_rate = 180.0
-            ship.thrust = ship.thrust_range[1]
-            ship.shoot()
+        # ship.turn_rate = 180.0
+        ship.thrust = ship.thrust_range[1]
+        ship.shoot()

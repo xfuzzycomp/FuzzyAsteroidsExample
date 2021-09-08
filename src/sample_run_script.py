@@ -10,7 +10,6 @@ if __name__ == "__main__":
         # "sound_on": False,
         # "frequency": 60,
         "real_time_multiplier": 2,
-        # "lives": 3,
         # "prints": True,
         # "allow_key_presses": False
     }

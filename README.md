@@ -15,15 +15,18 @@ Further details on the competition aspect of the challenge will be decided soon.
 2. Install GIT on your computer [Download GIT here.](https://git-scm.com/downloads)
 3. Install your preferred IDE (see below.)
 4. Connect GIT + Python to your IDE (follow the directions for your specific IDE)
-5. Clone this repository through your GIT Graphical User Interface or via
+5. We have set this repository to be a template, meaning you can easily copy everything in this repository
+   as a separate repository. Click on the green "Use this template" and follow the prompts to create your own
+   repository.
+6. After configuring your repository, clone it through your GIT (Graphical User Interface or command line)
 
-    ```git clone https://github.com/xfuzzycomp/FuzzyAsteroids```
+    ```git clone REPOSTORY_URL```
 
-6. In the command line, run the following command
+7. In the command line (while inside the directory you cloned to), run the following command
 
     ```pip install -r requirements.txt```
 
-7. Now you should be able to run Asteroid Smasher!
+8. Now you should be able to run Asteroid Smasher!
 
 ## Updating the FuzzyAsteroids environment
 

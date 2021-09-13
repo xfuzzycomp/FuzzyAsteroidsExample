@@ -30,7 +30,12 @@ class FuzzyController(ControllerBase):
 
         The environment looks for this function when calculating control actions for the Ship sprite.
 
-        :param ship: Object to use when controlling the SpaceShip
+        TODO populate this function with your fuzzy-AI behavior.
+
+        Follow good OOP/functional programming practices and don't make this 400 lines long.
+        Split up functionality into to make your code more legible, understandable, debuggable.
+
+        :param ships: Object to use when controlling the SpaceShip
         :param input_data: Input data which describes the current state of the environment
         """
         for ship in ships:

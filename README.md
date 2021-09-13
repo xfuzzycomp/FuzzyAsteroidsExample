@@ -17,7 +17,7 @@ Further details on the competition aspect of the challenge will be decided soon.
 4. Connect GIT + Python to your IDE (follow the directions for your specific IDE)
 5. Clone this repository through your GIT Graphical User Interface or via
 
-    ```git clone https://github.com/TimArnettThales/UCFuzzyChallenge```
+    ```git clone https://github.com/xfuzzycomp/FuzzyAsteroids```
 
 6. In the command line, run the following command
 
@@ -28,15 +28,15 @@ Further details on the competition aspect of the challenge will be decided soon.
 ## Updating the FuzzyAsteroids environment
 
 We may make occasional improvements to the FuzzyAsteroids environment and will push to this repository. 
-[https://github.com/TimArnettThales/FuzzyAsteroids](https://github.com/TimArnettThales/FuzzyAsteroids)
+[https://github.com/xfuzzycomp/FuzzyAsteroids](https://github.com/xfuzzycomp/FuzzyAsteroids)
 
 If you wish to upgrade ALL of your project dependencies, you can use the following command. 
 
-    pip install --upgrade --force-reinstall -r requirements.txt
+    pip install --upgrade -r requirements.txt
 
 If you wish to upgrade ONLY the Fuzzy Asteroids environment, you can also do the following
 
-    pip install --upgrade --force-reinstall  git+https://github.com/TimArnettThales/FuzzyAsteroids.git@master#egg=fuzzy_asteroids
+    pip install --upgrade fuzzy_asteroids
 
 ## Selecting an IDE
 

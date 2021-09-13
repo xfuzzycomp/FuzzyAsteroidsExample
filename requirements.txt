@@ -1,1 +1,5 @@
 fuzzy_asteroids==2.0.0
+
+# TODO add project dependencies to this file, begin tracking once you
+# have downloaded new dependencies or use `pip freeze > requirements.txt`
+

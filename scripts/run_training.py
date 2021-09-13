@@ -1,13 +1,12 @@
 from fuzzy_asteroids.fuzzy_asteroids import TrainerEnvironment
 
-from src.sample_controller import FuzzyController
-from sample_score import SampleScore
+from src.controller import FuzzyController
+from examples.example_score import SampleScore
 
 if __name__ == "__main__":
     # Available settings
     settings = {
         # "frequency": 60,
-        # "lives": 3,
         # "prints": False,
     }
 
